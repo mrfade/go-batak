@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BATAQ</title>
+  <link rel="stylesheet" href="/assets/style.min.css">
+</head>
+
+<body>
+
+  <div id="app">
+
+    <div v-if="stage == 'create-game'" id="create-game">
+      <h3>Create Game</h3>
+      <input v-model="user.name" type="text" placeholder="username">
+      <button type="button" @click="createNewGame">Create Game</button>
+
+      <hr>
+
+      <h3>Join Game</h3>
+      <input v-model="game.id" type="text" placeholder="game id">
+      <button type="button" @click="joinGame">Join</button>
+    </div>
+
+    <div v-if="stage == 'game'" id="game">
+      <div id="timer" :class="[game.stage ? 'run t10s' : '']"></div>
+      <pre id="statisticsBox">
+        * GameId: {{ game.id }}
+        * username: {{ user.name }}
+        * stage: {{ game.stage }}
+        * trump: {{ game.trump }}
+        * score: {{ user.score }}
+
+        --Users--
+        <template v-for="user in users" :key="user.id">{{ user.name }} -- {{ user.score ?? 0 }} -- {{ turn.id == user.id ? 'SIRA BURDA' : ''}}
+        </template>
+      </pre>
+
+      <button v-if="isOwner && game.stage === 'created'" class="start-game" @click="startGame">
+        Start Game
+      </button>
+
+      <h3 v-if="game.stage === 'finished' && game.winner">
+        Winner is {{ game.winner.name }} with score {{game.winner.score }}
+      </h3>
+
+      <div v-if="selectTrumpStage" class="select-trump">
+        <img src="/assets/cards/karoA.png" alt="" @click="selectTrump('karo')">
+        <img src="/assets/cards/sinekA.png" alt="" @click="selectTrump('sinek')">
+        <img src="/assets/cards/kupaA.png" alt="" @click="selectTrump('kupa')">
+        <img src="/assets/cards/macaA.png" alt="" @click="selectTrump('maca')">
+      </div>
+
+      <div v-if="selectLeftoverStage" class="select-leftover">
+        <img v-for="card in leftovers" :key="card.type + card.number"
+          :src="'/assets/cards/' + card.type + card.number + '.png'" alt="">
+      </div>
+
+      <div v-if="desk.length > 0" class="desk" :style="`--r-degg:${getRandomInt(-60, 0)}deg`">
+        <img v-for="card in desk" :key="card.type + card.number"
+          :src="'/assets/cards/' + card.type + card.number + '.png'" alt="">
+      </div>
+
+      <div v-for="player, index in playerSeatOrder" :key="player"
+        :class="['player', `p${index}`, `${turn.id === player ? 'turn' : ''}`]">
+        <h3>{{ getUser(player).name }} - ({{ getUser(player).score }}/{{ getUser(player).bid }})</h3>
+      </div>
+
+      <div class="bottom-manager" :class="myturn ? 'myturn' : ''">
+        <div v-if="game.stage === 'bid' && !bidded" class="bids">
+          <button v-for="i in 16" class="bid" @click="bid(i)">{{ i }}</button>
+        </div>
+
+        <div v-if="cards.length > 0" class="cards">
+          <div class="card" :class="{disabled: isDisabledCard(card)}" v-for="card in cards"
+            :key="card.type + card.number" @click="onCardClick(card)">
+            <img :src="'/assets/cards/' + card.type + card.number + '.png'" alt="">
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
+  <script src="/assets/socket.js"></script>
+</body>
+
+</html>

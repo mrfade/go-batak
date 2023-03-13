@@ -1,0 +1,233 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+#timer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 5px;
+  background-color: #ddd;
+
+  &::before {
+    content: " ";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 5px;
+    z-index: 1;
+    background-color: #2980b9;
+    display: none;
+    // animation: alternate;
+  }
+
+  &.run::before {
+    display: block;
+    animation-name: htoz;
+    animation-timing-function: linear;
+    animation-iteration-count: 1;
+  }
+
+  &.t10s::before {
+    animation-duration: 10s;
+  }
+
+  &.t20s::before {
+    animation-duration: 20s;
+  }
+
+  @keyframes htoz {
+    from {
+      width: 100%;
+    }
+
+    to {
+      width: 0%;
+    }
+  }
+}
+
+#create-game {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+
+  input,
+  button {
+    width: 300px;
+    // height: 80px;
+    border: 1px solid #ccc;
+    border-radius: 1rem;
+    padding: 1rem;
+  }
+
+  button {
+    margin-top: 1rem;
+  }
+}
+
+#game {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  position: relative;
+
+  background: url('/assets/bg.jpg') no-repeat;
+  // background-size: cover;
+
+  #statisticsBox {
+    position: absolute;
+    top: 2rem;
+    right: 2rem;
+  }
+
+  .select-trump,
+  .select-leftover {
+    display: flex;
+    gap: 1rem;
+
+    img {
+      width: 150px;
+      cursor: pointer;
+      transition: 200ms transform ease-in-out;
+
+      &:hover {
+        transform: scale(1.1);
+      }
+    }
+  }
+
+  .desk {
+    --r-deg: -30deg;
+
+    img {
+      width: 150px;
+
+      @for $i from 0 through 3 {
+        &:nth-child(#{$i}) {
+          transform: rotateZ(calc(var(--r-deg) + ($i * 15deg)));
+        }
+      }
+    }
+  }
+
+  .bottom-manager {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    // background-color: #f5f5f5;
+    position: fixed;
+    bottom: 4rem;
+    justify-content: center;
+
+    &.myturn {
+      background-color: rgba($color: lightgoldenrodyellow, $alpha: 0.6);
+    }
+
+    .bids {
+      display: flex;
+      gap: 1rem;
+
+      .bid {
+        border: none;
+        cursor: pointer;
+        padding: 0.5rem;
+        width: 2rem;
+      }
+    }
+
+    .cards {
+      display: flex;
+      padding: 20px;
+      padding-left: 80px;
+      transform: translateY(100px);
+
+      .card {
+        transition: 300ms transform;
+        width: 100px;
+        cursor: pointer;
+        margin-left: -60px;
+
+        &.disabled {
+          position: relative;
+
+          &::before {
+            content: " ";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba($color: #000000, $alpha: 0.6);
+          }
+        }
+
+        @for $i from 1 through 16 {
+          &:nth-child(#{$i}) {
+            z-index: 100 + $i;
+          }
+        }
+
+        img {
+          width: 100%;
+        }
+      }
+    }
+  }
+
+  .player {
+    position: fixed;
+    display: flex;
+    justify-content: center;
+    background-color: rgba($color: #000000, $alpha: 0.1);
+
+    &.turn {
+      background-color: rgba($color: lightgoldenrodyellow, $alpha: 0.3);
+    }
+
+    &.p0 {
+      width: 100vw;
+      left: 0;
+      bottom: 0;
+    }
+
+    &.p1 {
+      width: 100vh;
+      transform-origin: bottom right;
+      right: 0;
+      bottom: 0;
+      transform: rotate(-90deg) translateX(100%);
+    }
+
+    &.p2 {
+      width: 100vh;
+      transform-origin: top left;
+      left: 0;
+      top: 0;
+      transform: rotate(90deg) translateY(-100%)
+    }
+
+    h3 {
+      font-size: 1rem;
+    }
+  }
+}
