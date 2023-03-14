@@ -14,15 +14,18 @@
   <div id="app">
 
     <div v-if="stage == 'create-game'" id="create-game">
-      <h3>Create Game</h3>
-      <input v-model="user.name" type="text" placeholder="username">
-      <button type="button" @click="createNewGame">Create Game</button>
+      <div class="side">
+        <h3>Create Game</h3>
+        <input v-model="user.name" type="text" placeholder="username">
+        <button type="button" @click="createNewGame">Create Game</button>
+      </div>
 
-      <hr>
-
-      <h3>Join Game</h3>
-      <input v-model="game.id" type="text" placeholder="game id">
-      <button type="button" @click="joinGame">Join</button>
+      <div class="side">
+        <h3>Join Game</h3>
+        <input v-model="user.name" type="text" placeholder="username">
+        <input v-model="game.id" type="text" placeholder="game id">
+        <button type="button" @click="joinGame">Join</button>
+      </div>
     </div>
 
     <div v-if="stage == 'game'" id="game">
@@ -59,7 +62,17 @@
           :src="'/assets/cards/' + card.type + card.number + '.png'" alt="">
       </div>
 
-      <div class="desk"></div>
+      <div class="desk">
+        <!-- <div class="card">
+          <img src="/assets/cards/karo10.png" alt="">
+        </div>
+        <div class="card">
+          <img src="/assets/cards/karo2.png" alt="">
+        </div>
+        <div class="card">
+          <img src="/assets/cards/karo3.png" alt="">
+        </div> -->
+      </div>
 
       <div v-for="player, index in playerSeatOrder" :key="player"
         :class="['player', `p${index}`, `${turn.id === player ? 'turn' : ''}`]">

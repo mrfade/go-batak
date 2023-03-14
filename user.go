@@ -7,14 +7,30 @@ import (
 	"github.com/gofiber/websocket/v2"
 )
 
+var UserType = newUserTypeRegistry()
+
+func newUserTypeRegistry() *userTypeRegistry {
+	return &userTypeRegistry{
+		User: "user",
+		Bot:  "bot",
+	}
+}
+
+type userTypeRegistry struct {
+	User string
+	Bot  string
+}
+
 type User struct {
-	Id    string          `json:"id"`
-	Name  string          `json:"name"`
-	cards []Card          `json:"-"`
-	Score int             `json:"score"`
-	Bid   int             `json:"bid"`
-	trump string          `json:"-"`
-	con   *websocket.Conn `json:"-"`
+	Id         string          `json:"id"`
+	Name       string          `json:"name"`
+	Score      int             `json:"score"`
+	Bid        int             `json:"bid"`
+	Type       string          `json:"type"`
+	cards      []Card          `json:"-"`
+	trump      string          `json:"-"`
+	con        *websocket.Conn `json:"-"`
+	botManager *BotManager
 }
 
 func (user *User) sendCards() {
@@ -52,5 +68,9 @@ func (user *User) addCards(cards ...Card) {
 }
 
 func (user *User) sendMessage(message WSResponseMessage) {
+	if user.Type == UserType.Bot {
+		return
+	}
+
 	user.con.WriteJSON(message)
 }

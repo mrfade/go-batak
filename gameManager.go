@@ -2,10 +2,13 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"math"
 	"math/rand"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 const (
@@ -77,6 +80,7 @@ type GameManager struct {
 	Owner          *User
 	biggestBidUser *User
 	currentIndex   int
+	Turn           *User
 	Trump          string
 	leftoverDone   bool
 	Round          int
@@ -159,16 +163,18 @@ func (manager *GameManager) isOwner(user User) bool {
 
 func (manager *GameManager) runDesk() {
 	var userJson []byte
+	var nextUser *User
 
 	if len(manager.Desk) == 3 {
-		user := manager.calculateRound()
-		userIndex := manager.findUserIndex(user.Id)
+		nextUser = manager.calculateRound()
+		userIndex := manager.findUserIndex(nextUser.Id)
 
-		user.Score++
+		nextUser.Score++
 
+		manager.Turn = nextUser
 		manager.currentIndex = userIndex
 		manager.Round++
-		userJson, _ = json.Marshal(user)
+		userJson, _ = json.Marshal(nextUser)
 
 		manager.sendMessage(WSResponseMessage{
 			Type:    "roundWinner",
@@ -181,8 +187,10 @@ func (manager *GameManager) runDesk() {
 		// })
 	} else {
 		manager.currentIndex = (manager.currentIndex + 1) % 3
-		nextUser := manager.Users[manager.currentIndex]
+		nextUser = &manager.Users[manager.currentIndex]
 		userJson, _ = json.Marshal(nextUser)
+
+		manager.Turn = nextUser
 	}
 
 	manager.sendMessage(WSResponseMessage{
@@ -196,11 +204,7 @@ func (manager *GameManager) runDesk() {
 		Message: string(deskJson),
 	})
 
-	userListJson, _ := json.Marshal(manager.Users)
-	manager.sendMessage(WSResponseMessage{
-		Type:    "userList",
-		Message: string(userListJson),
-	})
+	manager.announceUserList()
 
 	if manager.Round == 16 {
 		manager.Finished = true
@@ -215,14 +219,33 @@ func (manager *GameManager) runDesk() {
 			Type:    "winner",
 			Message: string(userJson),
 		})
+
+		return
 	}
+
+	go func() {
+		sleep := 2 * time.Second
+		if len(manager.Desk) == 0 {
+			sleep = 5 * time.Second
+		}
+
+		time.Sleep(sleep)
+
+		if nextUser.Type == UserType.Bot {
+			// nextUser.botManager.Run()
+			card := nextUser.cards[0]
+			manager.onCardSent(nextUser, card)
+		}
+	}()
 }
 
 func (manager *GameManager) calculateRound() *User {
-	biggest := manager.Desk[0]
+	biggest := &manager.Desk[0]
 	trump := manager.Trump
 
-	for _, card := range manager.Desk {
+	for index := range manager.Desk {
+		card := &manager.Desk[index]
+
 		cardValue := CardNumberValues[card.Card.Number]
 		biggestValue := CardNumberValues[biggest.Card.Number]
 
@@ -255,6 +278,26 @@ func (manager *GameManager) calculateWinner() User {
 	return winner
 }
 
+func (manager *GameManager) onCardSent(user *User, card Card) {
+	cardIndex := user.findCardIndex(card)
+	if cardIndex == -1 {
+		log.Println("sendCard card not found")
+		return
+	}
+
+	deskCard := DeskCard{user, &card}
+	manager.addDeskCard(deskCard)
+	user.removeCard(cardIndex)
+
+	deskCardJson, _ := json.Marshal(deskCard)
+	manager.sendMessage(WSResponseMessage{
+		Type:    "cardToDesk",
+		Message: string(deskCardJson),
+	})
+
+	manager.runDesk()
+}
+
 func (manager *GameManager) sendMessage(message WSResponseMessage) {
 	for _, user := range manager.Users {
 		user.sendMessage(message)
@@ -281,6 +324,15 @@ func (manager *GameManager) announceUserListTo(user *User) {
 	})
 }
 
+func (manager *GameManager) announceUserList() {
+	userListJson, _ := json.Marshal(manager.Users)
+
+	manager.sendMessage(WSResponseMessage{
+		Type:    "userList",
+		Message: string(userListJson),
+	})
+}
+
 func (manager *GameManager) announceBids() {
 	bids := map[string]int{}
 
@@ -299,13 +351,26 @@ func (manager *GameManager) announceBids() {
 func (manager *GameManager) startGame() {
 	manager.Started = true
 
-	// usersCount := len(manager.users)
-	// for i := 0; i < 3-usersCount; i++ {
-	// 	user := User{"31234523452345", "", []Card{}, 0, "", nil}
-	// 	manager.addUser(user)
-	// }
+	usersCount := len(manager.Users)
+	for i := 0; i < 3-usersCount; i++ {
+		user := User{
+			Id:   uuid.Must(uuid.NewRandom()).String(),
+			Name: fmt.Sprintf("Bot %d", i),
+			Type: UserType.Bot,
+			con:  nil,
+		}
+
+		botManager := &BotManager{
+			user:        &user,
+			gameManager: manager,
+		}
+		user.botManager = botManager
+
+		manager.addUser(user)
+	}
 
 	manager.generateRandomCards()
+	manager.announceUserList()
 
 	// fmt.Printf("%+v\n", manager.users)
 	// fmt.Printf("%+v", manager.leftOverCards)
@@ -318,7 +383,9 @@ func (manager *GameManager) bidStage() {
 	go func() {
 		time.Sleep(10 * time.Second)
 
-		manager.trumpStage()
+		if manager.Stage == Stage.Bid {
+			manager.trumpStage()
+		}
 	}()
 }
 
@@ -346,7 +413,9 @@ func (manager *GameManager) trumpStage() {
 	})
 
 	go func() {
-		time.Sleep(10 * time.Second)
+		if manager.biggestBidUser.Type != UserType.Bot {
+			time.Sleep(10 * time.Second)
+		}
 
 		if manager.Stage == Stage.Trump {
 			if manager.Trump == "" {
@@ -359,7 +428,9 @@ func (manager *GameManager) trumpStage() {
 				Message: manager.Trump,
 			})
 
-			manager.leftoverStage()
+			if manager.Stage == Stage.Trump {
+				manager.leftoverStage()
+			}
 		}
 	}()
 }
@@ -373,7 +444,9 @@ func (manager *GameManager) leftoverStage() {
 	})
 
 	go func() {
-		time.Sleep(20 * time.Second)
+		if manager.biggestBidUser.Type != UserType.Bot {
+			time.Sleep(20 * time.Second)
+		}
 
 		if !manager.leftoverDone {
 			cards := []Card{}

@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;600&display=swap');
+
 * {
   box-sizing: border-box;
 }
@@ -10,6 +12,11 @@ body,
   padding: 0;
   margin: 0;
   box-sizing: border-box;
+  font-family: 'Poppins', sans-serif;
+}
+
+button {
+  font-family: 'Poppins', sans-serif;
 }
 
 #timer {
@@ -65,7 +72,11 @@ body,
   display: flex;
   justify-content: center;
   align-items: center;
-  flex-direction: column;
+  flex-direction: row;
+
+  h3 {
+    margin: 0;
+  }
 
   input,
   button {
@@ -77,7 +88,19 @@ body,
   }
 
   button {
-    margin-top: 1rem;
+    cursor: pointer;
+  }
+
+  .side {
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    padding: 2rem;
+    gap: 1rem;
+
+    &:first-child {
+      border-right: 1px solid #ccc;
+    }
   }
 }
 
@@ -100,6 +123,15 @@ body,
     right: 2rem;
   }
 
+  .start-game {
+    border: none;
+    font-size: 1.5rem;
+    border-radius: 2.5rem;
+    padding: 1rem 2rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
   .select-trump,
   .select-leftover {
     display: flex;
@@ -119,22 +151,41 @@ body,
   .desk,
   .fakeWrapper {
     --r-deg: -30deg;
+    position: relative;
     display: flex;
     justify-content: center;
-    width: 450px;
-    min-height: 200px;
+    min-width: 450px;
+    min-height: 220px;
     transition: 300ms all;
-    padding-left: 20px;
+    // padding-left: 20px;
 
-    img {
-      width: 150px;
-      margin-left: -20px;
+    .card {
+      width: 50px;
+      height: 100%;
+
+      img {
+        width: 150px;
+        margin-left: -50px;
+      }
 
       @for $i from 0 through 3 {
         &:nth-child(#{$i}) {
           transform: rotateZ(calc(var(--r-deg) + ($i * 15deg)));
         }
       }
+    }
+
+    &.stack {
+      justify-content: center;
+      align-items: center;
+      flex-flow: column nowrap;
+      // transition: 2s transform;
+
+      // .card {
+      //   position: absolute;
+      //   left: 50%;
+      //   transform: translateX(-50%);
+      // }
     }
   }
 

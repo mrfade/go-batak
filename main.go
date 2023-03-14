@@ -23,7 +23,12 @@ func findManagerByUserId(userId string) *GameManager {
 }
 
 func createUserFromWSMessage(c *websocket.Conn, wm WSClientMessage) User {
-	user := User{wm.UserId, wm.Username, []Card{}, 0, 0, "", c}
+	user := User{
+		Id:   wm.UserId,
+		Name: wm.Username,
+		Type: UserType.User,
+		con:  c,
+	}
 	return user
 }
 

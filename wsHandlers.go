@@ -56,7 +56,12 @@ func mountWSHandlers() {
 		}
 
 		// user
-		user := User{wm.UserId, wm.Username, []Card{}, 0, 0, "", c}
+		user := User{
+			Id:   wm.UserId,
+			Name: wm.Username,
+			Type: UserType.User,
+			con:  c,
+		}
 		userJson, _ := json.Marshal(user)
 
 		manager.sendMessage(WSResponseMessage{
@@ -100,6 +105,17 @@ func mountWSHandlers() {
 		user.Bid = bid
 
 		manager.announceBids()
+
+		isEveryoneBidded := true
+		for _, user := range manager.Users {
+			if user.Type != UserType.Bot && user.Bid == 0 {
+				isEveryoneBidded = false
+			}
+		}
+
+		if isEveryoneBidded {
+			manager.trumpStage()
+		}
 	})
 
 	wsHandler.Handle("selectTrump", func(c *websocket.Conn, wm WSClientMessage) {
@@ -180,12 +196,12 @@ func mountWSHandlers() {
 			return
 		}
 
-		if len(manager.Users) < 3 {
-			c.WriteJSON(WSResponseMessage{
-				Type: "gameNotFull",
-			})
-			return
-		}
+		// if len(manager.Users) < 3 {
+		// 	c.WriteJSON(WSResponseMessage{
+		// 		Type: "gameNotFull",
+		// 	})
+		// 	return
+		// }
 
 		manager.startGame()
 
@@ -243,22 +259,6 @@ func mountWSHandlers() {
 
 		user := manager.getUser(wm.UserId)
 
-		cardIndex := user.findCardIndex(card)
-		if cardIndex == -1 {
-			log.Println("sendCard card not found")
-			return
-		}
-
-		deskCard := DeskCard{user, &card}
-		manager.addDeskCard(deskCard)
-		user.removeCard(cardIndex)
-
-		deskCardJson, _ := json.Marshal(deskCard)
-		manager.sendMessage(WSResponseMessage{
-			Type:    "cardToDesk",
-			Message: string(deskCardJson),
-		})
-
-		manager.runDesk()
+		manager.onCardSent(user, card)
 	})
 }
