@@ -124,22 +124,16 @@ body,
     width: 450px;
     min-height: 200px;
     transition: 300ms all;
+    padding-left: 20px;
 
     img {
       width: 150px;
+      margin-left: -20px;
 
       @for $i from 0 through 3 {
         &:nth-child(#{$i}) {
           transform: rotateZ(calc(var(--r-deg) + ($i * 15deg)));
         }
-      }
-    }
-
-    &.roundOver {
-      padding-left: 80px;
-
-      img {
-        margin-left: -80px;
       }
     }
   }

@@ -130,23 +130,24 @@ const app = createApp({
     isDisabledCard(card) {
       let _r = null
       if (!this.myturn) _r = true
+      if (this.animatingWinner) _r = true
       if (this.selectLeftoverStage) _r = false
       if (_r !== null) return _r
 
       if (this.desk.length === 0) return false
 
-      const deskFirst = this.desk[0]
+      const deskFirst = this.desk[0].card
       const doesUserHaveDeskType = this.cards.findIndex(item => item.type === deskFirst.type) > -1
       if (deskFirst.type !== card.type && doesUserHaveDeskType) return true
 
       const doesUserHaveTrump = this.cards.findIndex(item => item.type === this.game.trump) > -1
       if (!doesUserHaveDeskType && doesUserHaveTrump && card.type !== this.game.trump) return true
 
-      const deskTypeBiggestTrump = this.desk.filter(item => item.type === this.game.trump).sort((a, b) => b.cmp - a.cmp).at(0)
+      const deskTypeBiggestTrump = this.desk.filter(item => item.card.type === this.game.trump).sort((a, b) => b.cmp - a.cmp).at(0)
       const doesUserHaveBiggerTrump = deskTypeBiggestTrump && this.cards.findIndex(item => item.type === this.game.trump && deskTypeBiggestTrump.cmp > card.cmp) > -1
       if (!doesUserHaveDeskType && doesUserHaveTrump && doesUserHaveBiggerTrump && card.type === this.game.trump) return true
 
-      const deskTypeBiggest = this.desk.filter(item => item.type === deskFirst.type).sort((a, b) => b.cmp - a.cmp).at(0)
+      const deskTypeBiggest = this.desk.filter(item => item.card.type === deskFirst.type).sort((a, b) => b.cmp - a.cmp).at(0)
       const doesUserHaveBiggerDesk = deskTypeBiggest && this.cards.findIndex(item => item.type === deskFirst.type && item.cmp > deskTypeBiggest.cmp) > -1
       if (doesUserHaveDeskType && doesUserHaveBiggerDesk && card.cmp < deskTypeBiggest.cmp) return true
 
@@ -204,6 +205,7 @@ const app = createApp({
       selectLeftoverStage: false,
       leftovers: [],
       myturn: false,
+      animatingWinner: false,
       turn: {
         id: '',
         name: ''
@@ -287,7 +289,7 @@ socket.addEventListener('message', function (message) {
       const gameDetails = JSON.parse(message.message)
       app.game.stage = gameDetails.Stage
       app.game.owner = gameDetails.Owner
-      app.game.desk = gameDetails.Desk && gameDetails.Desk.map(item => item.Card)
+      app.game.desk = gameDetails.Desk
       app.game.trump = gameDetails.Trump
       break;
 
@@ -315,7 +317,10 @@ socket.addEventListener('message', function (message) {
 
     case 'desk':
       let deskCards = JSON.parse(message.message)
-      deskCards = calculateCardsValue(deskCards)
+      deskCards = deskCards.map(item => ({
+        card: calculateCardsValue([item.card]).at(0),
+        user: item.user
+      }))
       app.desk = deskCards
       break;
 
@@ -428,6 +433,7 @@ socket.addEventListener('message', function (message) {
       break;
 
     case 'roundWinner':
+      app.animatingWinner = true
       const roundWinner = JSON.parse(message.message)
       desk.classList.add('roundOver')
 
@@ -436,54 +442,62 @@ socket.addEventListener('message', function (message) {
 
       var deskRect = desk.getBoundingClientRect();
 
-      const fakeWrapper = document.createElement('div')
-      fakeWrapper.classList.add('fakeWrapper')
-      fakeWrapper.style.position = 'absolute'
-      fakeWrapper.style.top = deskRect.top
-      fakeWrapper.style.left = deskRect.left
-      const fragment = document.createDocumentFragment()
-      const deskClone = desk.cloneNode(true)
-      for (var i = 0; i < deskClone.children.length; i++) {
-        deskClone.children[i].style.removeProperty('transform')
-        deskClone.children[i].style.removeProperty('width')
-      }
-      fragment.appendChild(deskClone)
-      fakeWrapper.appendChild(fragment)
-      document.getElementById('game').appendChild(fakeWrapper)
-
-      while (desk.hasChildNodes()) {
-        desk.removeChild(desk.firstChild);
-      }
-
-      var rect = fakeWrapper.getBoundingClientRect();
-
       setTimeout(() => {
-        switch (winnerIndex) {
-          case 0:
-            // to bottom
-            gsap.to(fakeWrapper, { y: windowHeight * 2 });
-            break;
+        const fakeWrapper = document.createElement('div')
+        fakeWrapper.classList.add('fakeWrapper')
+        fakeWrapper.style.position = 'absolute'
+        fakeWrapper.style.top = deskRect.top
+        fakeWrapper.style.left = deskRect.left
+        const fragment = document.createDocumentFragment()
+        for (var i = 0; i < desk.children.length; i++) {
+          const childrenClone = desk.children[i].cloneNode(true)
+          childrenClone.style.removeProperty('transform')
+          childrenClone.style.removeProperty('width')
+          fragment.appendChild(childrenClone)
+        }
+        fakeWrapper.appendChild(fragment)
+        document.getElementById('game').appendChild(fakeWrapper)
 
-          case 1:
-            // to right
-            gsap.to(fakeWrapper, { x: windowWidth * 2 });
-            break;
-
-          case 2:
-            // to left
-            gsap.to(fakeWrapper, { x: -windowWidth * 2 });
-            break;
-
-          default:
-            console.log('cardToDesk::winnerIndex', winnerIndex)
-            break;
+        while (desk.hasChildNodes()) {
+          desk.removeChild(desk.firstChild);
         }
 
+        var rect = fakeWrapper.getBoundingClientRect();
+
+        gsap.to(fakeWrapper, { paddingLeft: 120, duration: 0.5 })
+        fakeWrapper.childNodes.forEach(node => {
+          gsap.to(node, { marginLeft: -120, duration: 1 })
+        })
+
         setTimeout(() => {
-          desk.classList.remove('roundOver')
-          fakeWrapper.remove()
-        }, 1000)
-      }, 2000)
+          switch (winnerIndex) {
+            case 0:
+              // to bottom
+              gsap.to(fakeWrapper, { y: windowHeight * 2, duration: 2 });
+              break;
+
+            case 1:
+              // to right
+              gsap.to(fakeWrapper, { x: windowWidth * 2, duration: 2 });
+              break;
+
+            case 2:
+              // to left
+              gsap.to(fakeWrapper, { x: -windowWidth * 2, duration: 2 });
+              break;
+
+            default:
+              console.log('cardToDesk::winnerIndex', winnerIndex)
+              break;
+          }
+
+          setTimeout(() => {
+            desk.classList.remove('roundOver')
+            fakeWrapper.remove()
+            app.animatingWinner = false
+          }, 2000)
+        }, 2000)
+      }, 1000)
       break;
 
     default:
