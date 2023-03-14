@@ -59,10 +59,7 @@
           :src="'/assets/cards/' + card.type + card.number + '.png'" alt="">
       </div>
 
-      <div v-if="desk.length > 0" class="desk" :style="`--r-degg:${getRandomInt(-60, 0)}deg`">
-        <img v-for="card in desk" :key="card.type + card.number"
-          :src="'/assets/cards/' + card.type + card.number + '.png'" alt="">
-      </div>
+      <div class="desk"></div>
 
       <div v-for="player, index in playerSeatOrder" :key="player"
         :class="['player', `p${index}`, `${turn.id === player ? 'turn' : ''}`]">
@@ -76,7 +73,7 @@
 
         <div v-if="cards.length > 0" class="cards">
           <div class="card" :class="{disabled: isDisabledCard(card)}" v-for="card in cards"
-            :key="card.type + card.number" @click="onCardClick(card)">
+            :key="card.type + card.number" @click="(e) => onCardClick(e, card)">
             <img :src="'/assets/cards/' + card.type + card.number + '.png'" alt="">
           </div>
         </div>
@@ -87,6 +84,7 @@
 
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.4/gsap.min.js"></script>
   <script src="/assets/socket.js"></script>
 </body>
 

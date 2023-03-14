@@ -253,6 +253,12 @@ func mountWSHandlers() {
 		manager.addDeskCard(deskCard)
 		user.removeCard(cardIndex)
 
+		deskCardJson, _ := json.Marshal(deskCard)
+		manager.sendMessage(WSResponseMessage{
+			Type:    "cardToDesk",
+			Message: string(deskCardJson),
+		})
+
 		manager.runDesk()
 	})
 }

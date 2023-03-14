@@ -1,5 +1,6 @@
 const { createApp } = Vue
-const socket = new WebSocket('ws://localhost:3000/ws')
+const host = window.location.hostname
+const socket = new WebSocket(`ws://${host}:3000/ws`)
 
 function generateUUID() { // Public Domain/MIT
   var d = new Date().getTime();//Timestamp
@@ -75,7 +76,7 @@ const app = createApp({
       this.users.push(this.user)
     },
 
-    onCardClick(card) {
+    onCardClick(e, card) {
       console.log('card:', card)
       console.log('game.stage:', this.game.stage)
 
@@ -97,6 +98,25 @@ const app = createApp({
 
       if (!this.myturn) return
       if (this.isDisabledCard(card)) return
+
+
+      const box = e.target
+      var rect = box.getBoundingClientRect();
+
+      var fragment = document.createDocumentFragment()
+      fragment.appendChild(box)
+      document.querySelector('.desk').appendChild(fragment)
+
+      var newRect = box.getBoundingClientRect();
+
+      TweenMax.set(box, { x: 0, y: 0, width: box.width });
+
+      TweenMax.from(box, 1, {
+        x: rect.left - newRect.left,
+        y: rect.top - newRect.top,
+        width: rect.width,
+        ease: Power3.easeOut
+      });
 
       socket.send(JSON.stringify({
         type: 'sendCard',
@@ -208,13 +228,13 @@ const app = createApp({
   }
 }).mount('#app')
 
-
 const cardTypeSortOrder = {
   maca: 1,
   kupa: 2,
   sinek: 3,
   karo: 4
 }
+
 const cardSortOrder = {
   A: 30,
   J: 25,
@@ -245,7 +265,11 @@ function calculateCardsValue(cards) {
 socket.addEventListener('message', function (message) {
   message = JSON.parse(message.data)
 
-  console.log(message)
+  // console.log('message', message)
+
+  const windowWidth = window.outerWidth
+  const windowHeight = window.outerHeight
+  const desk = document.querySelector('.desk')
 
   switch (message.type) {
     case 'gameId':
@@ -348,6 +372,120 @@ socket.addEventListener('message', function (message) {
       app.game.stage = stage
       break;
 
+    case 'cardToDesk':
+      const deskCard = JSON.parse(message.message)
+      const userId = deskCard.user.id
+      if (userId === app.user.id) return
+      const userIndex = app.playerSeatOrder.findIndex(user => user === userId)
+
+      const newCard = document.createElement('img')
+      newCard.src = '/assets/cards/' + deskCard.card.type + deskCard.card.number + '.png'
+      desk.appendChild(newCard)
+
+      var rect = newCard.getBoundingClientRect();
+      TweenMax.set(newCard, { x: 0, y: 0 });
+
+      switch (userIndex) {
+        case 0:
+          // from bottom
+
+          TweenMax.from(newCard, 1, {
+            x: rect.left,
+            y: windowHeight,
+            ease: Power3.easeOut
+          });
+
+          break;
+
+        case 1:
+          // from right
+
+          TweenMax.from(newCard, 1, {
+            x: windowWidth,
+            y: (windowHeight / 2) - rect.height,
+            ease: Power3.easeOut
+          });
+
+          break;
+
+        case 2:
+          // from left
+
+          TweenMax.from(newCard, 1, {
+            x: -rect.width - windowWidth,
+            y: (windowHeight / 2) - rect.height,
+            ease: Power3.easeOut
+          });
+
+          break;
+
+        default:
+          console.log('cardToDesk::userIndex', userIndex)
+          console.log('cardToDesk::userId', userId)
+          console.log('cardToDesk::app.playerSeatOrder', app.playerSeatOrder)
+          break;
+      }
+      break;
+
+    case 'roundWinner':
+      const roundWinner = JSON.parse(message.message)
+      desk.classList.add('roundOver')
+
+      const roundWinnerId = roundWinner.id
+      const winnerIndex = app.playerSeatOrder.findIndex(user => user === roundWinnerId)
+
+      var deskRect = desk.getBoundingClientRect();
+
+      const fakeWrapper = document.createElement('div')
+      fakeWrapper.classList.add('fakeWrapper')
+      fakeWrapper.style.position = 'absolute'
+      fakeWrapper.style.top = deskRect.top
+      fakeWrapper.style.left = deskRect.left
+      const fragment = document.createDocumentFragment()
+      const deskClone = desk.cloneNode(true)
+      for (var i = 0; i < deskClone.children.length; i++) {
+        deskClone.children[i].style.removeProperty('transform')
+        deskClone.children[i].style.removeProperty('width')
+      }
+      fragment.appendChild(deskClone)
+      fakeWrapper.appendChild(fragment)
+      document.getElementById('game').appendChild(fakeWrapper)
+
+      while (desk.hasChildNodes()) {
+        desk.removeChild(desk.firstChild);
+      }
+
+      var rect = fakeWrapper.getBoundingClientRect();
+
+      setTimeout(() => {
+        switch (winnerIndex) {
+          case 0:
+            // to bottom
+            gsap.to(fakeWrapper, { y: windowHeight * 2 });
+            break;
+
+          case 1:
+            // to right
+            gsap.to(fakeWrapper, { x: windowWidth * 2 });
+            break;
+
+          case 2:
+            // to left
+            gsap.to(fakeWrapper, { x: -windowWidth * 2 });
+            break;
+
+          default:
+            console.log('cardToDesk::winnerIndex', winnerIndex)
+            break;
+        }
+
+        setTimeout(() => {
+          desk.classList.remove('roundOver')
+          fakeWrapper.remove()
+        }, 1000)
+      }, 2000)
+      break;
+
     default:
       break;
   }
@@ -358,14 +496,17 @@ setInterval(() => {
   const length = cards.length
 
   cards.forEach((card, index) => {
-    const i = index > (length / 2) ? index - (length / 2) + 1 : (length / 2) - index + 1;
-    const m = index > (length / 2) ? 1 : -1;
+    if (card.matches('.roundOver')) return
+
+    const i = index >= (length / 2) ? index - (length / 2) + 1 : (length / 2) - index + 1;
+    const m = index >= (length / 2) ? 1 : -1;
 
     let transform = ''
 
     const y = -100 + i * i
     transform = `${transform} translate3d(0, ${y}px, 0px)`
     transform = `${transform} rotateZ(${m * i * 1.55}deg)`
+    transform = `${transform} translateY(100px)`
 
     card.style.transform = transform;
 

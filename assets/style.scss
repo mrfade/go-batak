@@ -82,8 +82,9 @@ body,
 }
 
 #game {
-  width: 100%;
-  height: 100%;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -115,8 +116,14 @@ body,
     }
   }
 
-  .desk {
+  .desk,
+  .fakeWrapper {
     --r-deg: -30deg;
+    display: flex;
+    justify-content: center;
+    width: 450px;
+    min-height: 200px;
+    transition: 300ms all;
 
     img {
       width: 150px;
@@ -125,6 +132,14 @@ body,
         &:nth-child(#{$i}) {
           transform: rotateZ(calc(var(--r-deg) + ($i * 15deg)));
         }
+      }
+    }
+
+    &.roundOver {
+      padding-left: 80px;
+
+      img {
+        margin-left: -80px;
       }
     }
   }
@@ -159,7 +174,7 @@ body,
       display: flex;
       padding: 20px;
       padding-left: 80px;
-      transform: translateY(100px);
+      // transform: translateY(100px);
 
       .card {
         transition: 300ms transform;

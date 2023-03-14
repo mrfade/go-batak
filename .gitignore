@@ -8,3 +8,7 @@
 !*/
 
 *.min.*
+
+node_modules
+
+client

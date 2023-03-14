@@ -60,8 +60,8 @@ type Card struct {
 }
 
 type DeskCard struct {
-	user *User
-	card *Card
+	User *User `json:"user"`
+	Card *Card `json:"card"`
 }
 
 type GameManager struct {
@@ -170,6 +170,11 @@ func (manager *GameManager) runDesk() {
 		manager.Round++
 		userJson, _ = json.Marshal(user)
 
+		manager.sendMessage(WSResponseMessage{
+			Type:    "roundWinner",
+			Message: string(userJson),
+		})
+
 		// user.sendMessage(WSResponseMessage{
 		// 	Type:    "score",
 		// 	Message: strconv.Itoa(user.Score),
@@ -185,12 +190,7 @@ func (manager *GameManager) runDesk() {
 		Message: string(userJson),
 	})
 
-	deskCards := []Card{}
-	for _, deskCard := range manager.Desk {
-		deskCards = append(deskCards, *deskCard.card)
-	}
-	deskJson, _ := json.Marshal(deskCards)
-
+	deskJson, _ := json.Marshal(manager.Desk)
 	manager.sendMessage(WSResponseMessage{
 		Type:    "desk",
 		Message: string(deskJson),
@@ -223,11 +223,11 @@ func (manager *GameManager) calculateRound() *User {
 	trump := manager.Trump
 
 	for _, card := range manager.Desk {
-		cardValue := CardNumberValues[card.card.Number]
-		biggestValue := CardNumberValues[biggest.card.Number]
+		cardValue := CardNumberValues[card.Card.Number]
+		biggestValue := CardNumberValues[biggest.Card.Number]
 
-		cardType := card.card.Type
-		biggestType := biggest.card.Type
+		cardType := card.Card.Type
+		biggestType := biggest.Card.Type
 
 		if cardType == biggestType {
 			if cardValue > biggestValue {
@@ -242,7 +242,7 @@ func (manager *GameManager) calculateRound() *User {
 
 	manager.Desk = []DeskCard{}
 
-	return biggest.user
+	return biggest.User
 }
 
 func (manager *GameManager) calculateWinner() User {
