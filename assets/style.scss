@@ -291,3 +291,337 @@ button {
     }
   }
 }
+
+#game-region {
+  pointer-events: all;
+  background-position: 0 0;
+  background-repeat: no-repeat;
+  background-size: 100vw 100vh;
+  height: 100%;
+  overflow: hidden;
+  perspective: 8000px;
+  position: relative;
+
+  .poker-card {
+    border-radius: 8px;
+    cursor: default;
+    height: 247px;
+    left: 50%;
+    position: absolute;
+    top: 50%;
+    transform-style: preserve-3d;
+    transform: rotateY(0);
+    transition: -webkit-transform .3s, -webkit-box-shadow .2s;
+    transition: transform .3s, box-shadow .2s;
+    transition: transform .3s, box-shadow .2s, -webkit-transform .3s, -moz-transform .3s, -o-transform .3s, -webkit-box-shadow .2s, -moz-box-shadow .2s;
+    width: 182px;
+    z-index: 1000;
+
+    margin-left: -91px;
+    margin-top: -123.5px;
+    transition: transform 500ms ease 0s, box-shadow 200ms ease 0s;
+
+    &.ready {
+      box-shadow: 0 0 5px rgba(0, 0, 0, .1)
+    }
+
+    &.initial {
+      transform: rotate(0deg) rotateY(180deg) scale(0.5) rotateY(360deg);
+      transition: transform 600ms ease 0s, box-shadow 200ms ease 0s;
+    }
+
+    >.back,
+    >.front {
+      backface-visibility: hidden;
+      border-radius: 8px;
+      box-sizing: border-box;
+      height: 100%;
+      left: 0;
+      position: absolute;
+      top: 0;
+      width: 100%
+    }
+
+    >.back {
+      transform: rotateY(180deg)
+    }
+
+    >.front {
+      transform: rotateY(0)
+    }
+
+    &.indeck .front:after {
+      content: "";
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, .3);
+      border: 1px solid transparent;
+      border-radius: 8px;
+      backface-visibility: hidden
+    }
+
+    &.distributing .front:after,
+    &.indeck.movable .front:after {
+      display: none
+    }
+
+    &.movable:hover .front {
+      box-shadow: 0 0 20px 5px #add8e6
+    }
+
+    &.spades-broken:after {
+      content: "";
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      z-index: 10000;
+      background: url(../assets/images/others/spades_broken.png) no-repeat center;
+      background-size: 80%;
+      animation: spadesBroken 1s infinite
+    }
+
+    &>.front {
+      background-image: url('/assets/large_print_london.png');
+      background-size: 2366px 988px;
+      background-repeat: initial;
+      background-attachment: initial;
+      background-origin: initial;
+      background-clip: initial;
+    }
+
+    &>.back {
+      background-image: url('/assets/rhombus_blue.png');
+      background-size: 100% 100%;
+    }
+
+    &.card-type-spade .front {
+      background-position-y: 0px;
+    }
+
+    &.card-type-heart .front {
+      background-position-y: -247px;
+    }
+
+    &.card-type-club .front {
+      background-position-y: -494px;
+    }
+
+    &.card-type-diamond .front {
+      background-position-y: -741px;
+    }
+
+    @for $i from 2 through 10 {
+      &.card-num-#{$i} .front {
+        background-position-x: -#{($i - 1) * 182}px;
+      }
+    }
+
+    &.card-num-a .front {
+      background-position-x: 0px;
+    }
+
+    &.card-num-k .front {
+      background-position-x: -2184px;
+    }
+
+    &.card-num-q .front {
+      background-position-x: -2002px;
+    }
+
+    &.card-num-j .front {
+      background-position-x: -1820px;
+    }
+  }
+
+  .poker-card {
+    transition: -webkit-transform .5s, -webkit-box-shadow .2s;
+    transition: transform .5s, box-shadow .2s;
+    transition: transform .5s, box-shadow .2s, -webkit-transform .5s, -moz-transform .5s, -o-transform .5s, -webkit-box-shadow .2s, -moz-box-shadow .2s;
+
+    &.in-waste {
+      transition: -webkit-transform .3s, -webkit-box-shadow .2s;
+      transition: transform .3s, box-shadow .2s;
+      transition: transform .3s, box-shadow .2s, -webkit-transform .3s, -moz-transform .3s, -o-transform .3s, -webkit-box-shadow .2s, -moz-box-shadow .2s
+    }
+  }
+
+  .select-trump {
+    @for $i from 1 through 4 {
+      .poker-card:nth-child(#{$i}) {
+        transform: translate3d(calc((#{-288 + ($i - 1) * 192}px) * var(--scale)), 0px, 0px) scale(var(--scale));
+      }
+    }
+  }
+
+  .info-board {
+    position: absolute;
+    z-index: 200;
+    display: inline-block;
+    text-align: center;
+    transition-duration: .3s;
+    transform: translateZ(0);
+    width: auto;
+    box-sizing: content-box;
+    padding: 5px;
+    padding-top: 20px;
+    pointer-events: none
+  }
+
+  .info-board.board-0 {
+    bottom: 0;
+    left: 0
+  }
+
+  .info-board.board-1 {
+    left: 0;
+    top: 10%
+  }
+
+  .cards-in-fan .info-board.board-1 {
+    left: 3%
+  }
+
+  .info-board.board-2 {
+    top: 0;
+    right: 10%
+  }
+
+  .info-board.board-3 {
+    right: 0;
+    bottom: 10%
+  }
+
+  .cards-in-fan .info-board.board-3 {
+    right: 3%
+  }
+
+  .info-board.no-avatar .player-avatar {
+    display: none
+  }
+
+  .player-avatar.highlight {
+    animation: pulsing 1s alternate infinite
+  }
+
+  .info-board.new-avatar .player-avatar.highlight {
+    animation: new_pulsing 1s alternate infinite
+  }
+
+  .namearea {
+    display: flex;
+    align-items: center;
+    justify-content: center
+  }
+
+  .player-bid,
+  .player-name,
+  .separator {
+    font-family: -apple-system, "Helvetica Neue", Roboto, "Segoe UI", sans-serif;
+    font-weight: 700;
+    font-size: 1.3em;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, .8);
+    color: #fff;
+    padding: 0;
+    margin: 0
+  }
+
+  .separator {
+    margin: 0 6px;
+    margin-top: 5px;
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #fff;
+    text-shadow: none;
+    color: transparent;
+    box-shadow: 1px 1px 2px rgba(0, 0, 0, .8)
+  }
+
+  .player-bidding.highlight {
+    transition: -webkit-filter 1s
+  }
+
+  .player-avatar {
+    display: inline-block;
+    width: 60px;
+    height: 60px;
+    background-size: contain;
+    border-radius: 50%;
+    box-shadow: 1px 1px 2px rgba(0, 0, 0, .8);
+    pointer-events: all;
+    filter: drop-shadow(0 3px 3px rgba(0, 0, 0, .6));
+    cursor: pointer;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges
+  }
+
+  .info-board.new-avatar .player-avatar {
+    background-color: transparent;
+    border-radius: 0;
+    box-shadow: none;
+    width: 75px;
+    height: 75px
+  }
+
+  .board-0 .message-bubble {
+    margin-left: 15px
+  }
+
+  .message-bubble {
+    display: block;
+    padding: 10px;
+    min-width: 100px;
+    position: absolute;
+    background: rgba(0, 0, 0, .5);
+    left: 60%;
+    border-radius: 4px;
+    display: none;
+    color: #fff;
+    filter: drop-shadow(-2px 0 5px rgba(0, 0, 0, .4))
+  }
+
+  .board-3 .message-bubble {
+    left: initial;
+    right: 60%
+  }
+
+  .message-bubble.show {
+    display: block
+  }
+
+  .message-bubble:before {
+    content: "";
+    border: 8px solid rgba(0, 0, 0, .5);
+    border-bottom-color: transparent;
+    border-left-color: transparent;
+    border-top-color: transparent;
+    position: absolute;
+    top: 50%;
+    left: -16px;
+    margin-top: -8px;
+    z-index: 1000
+  }
+
+  .board-3 .message-bubble:before {
+    left: initial;
+    right: -16px;
+    border: 8px solid rgba(0, 0, 0, .5);
+    border-bottom-color: transparent;
+    border-right-color: transparent;
+    border-top-color: transparent
+  }
+}
+
+@keyframes spadesBroken {
+  from {
+    transform: scale(1);
+    opacity: 1
+  }
+
+  to {
+    transform: scale(.75);
+    opacity: .8
+  }
+}

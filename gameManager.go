@@ -12,10 +12,10 @@ import (
 )
 
 const (
-	Maca  string = "maca"
-	Kupa  string = "kupa"
-	Karo  string = "karo"
-	Sinek string = "sinek"
+	Maca  string = "spade"
+	Kupa  string = "heart"
+	Karo  string = "club"
+	Sinek string = "diamond"
 )
 
 var Stage = newStageRegistry()
@@ -58,8 +58,10 @@ var CardNumberValues = map[string]int{
 }
 
 type Card struct {
-	Type   string `json:"type"`
-	Number string `json:"number"`
+	Id     string `json:"id"`
+	Type   string `json:"type,omitempty"`
+	Number string `json:"number,omitempty"`
+	Owner  *User  `json:"owner"`
 }
 
 type DeskCard struct {
@@ -71,7 +73,7 @@ type GameManager struct {
 	Id             string
 	Stage          string
 	allCards       []Card
-	Users          []User
+	Users          []*User
 	leftOverCards  []Card
 	Desk           []DeskCard
 	Started        bool
@@ -88,10 +90,26 @@ type GameManager struct {
 
 func (manager *GameManager) createCards() {
 	for _, _card := range CardsNumbers {
-		cardMaca := Card{Maca, _card}
-		cardKupa := Card{Kupa, _card}
-		cardKaro := Card{Karo, _card}
-		cardSinek := Card{Sinek, _card}
+		cardMaca := Card{
+			Id:     uuid.Must(uuid.NewRandom()).String(),
+			Type:   Maca,
+			Number: _card,
+		}
+		cardKupa := Card{
+			Id:     uuid.Must(uuid.NewRandom()).String(),
+			Type:   Kupa,
+			Number: _card,
+		}
+		cardKaro := Card{
+			Id:     uuid.Must(uuid.NewRandom()).String(),
+			Type:   Karo,
+			Number: _card,
+		}
+		cardSinek := Card{
+			Id:     uuid.Must(uuid.NewRandom()).String(),
+			Type:   Sinek,
+			Number: _card,
+		}
 
 		manager.allCards = append(manager.allCards, cardKaro)
 		manager.allCards = append(manager.allCards, cardMaca)
@@ -108,9 +126,16 @@ func (manager *GameManager) generateRandomCards() {
 	for i := 0; i < 16*3; i++ {
 		randIndex := rand.Intn(len(cards))
 		card := cards[randIndex]
-		user := &manager.Users[i/16]
+		user := manager.Users[i/16]
 		user.cards = append(user.cards, card)
 		cards = append(cards[:randIndex], cards[randIndex+1:]...)
+	}
+
+	// bind cards to users
+	for i := 0; i < len(manager.Users); i++ {
+		for j := 0; j < len(manager.Users[i].cards); j++ {
+			manager.Users[i].cards[j].Owner = manager.Users[i]
+		}
 	}
 
 	manager.leftOverCards = cards
@@ -121,13 +146,13 @@ func (manager *GameManager) addDeskCard(card DeskCard) {
 }
 
 func (manager *GameManager) addUser(user User) {
-	manager.Users = append(manager.Users, user)
+	manager.Users = append(manager.Users, &user)
 }
 
 func (manager *GameManager) getUser(userId string) *User {
 	for index, user := range manager.Users {
 		if user.Id == userId {
-			return &manager.Users[index]
+			return manager.Users[index]
 		}
 	}
 
@@ -187,7 +212,7 @@ func (manager *GameManager) runDesk() {
 		// })
 	} else {
 		manager.currentIndex = (manager.currentIndex + 1) % 3
-		nextUser = &manager.Users[manager.currentIndex]
+		nextUser = manager.Users[manager.currentIndex]
 		userJson, _ = json.Marshal(nextUser)
 
 		manager.Turn = nextUser
@@ -268,7 +293,7 @@ func (manager *GameManager) calculateRound() *User {
 	return biggest.User
 }
 
-func (manager *GameManager) calculateWinner() User {
+func (manager *GameManager) calculateWinner() *User {
 	winner := manager.Users[0]
 	for _, user := range manager.Users {
 		if user.Score > winner.Score {
@@ -400,7 +425,7 @@ func (manager *GameManager) trumpStage() {
 	for index, user := range manager.Users {
 		if biggestBid < user.Bid {
 			biggestBid = user.Bid
-			biggestBidUser = &manager.Users[index]
+			biggestBidUser = manager.Users[index]
 			biggestBidUserIndex = index
 		}
 	}
