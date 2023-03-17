@@ -51,7 +51,7 @@ func (user *User) sendCards() {
 
 func (user *User) findCardIndex(card Card) int {
 	for index, _card := range user.cards {
-		if _card == card {
+		if _card.Id == card.Id {
 			return index
 		}
 	}

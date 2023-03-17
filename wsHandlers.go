@@ -114,6 +114,7 @@ func mountWSHandlers() {
 		}
 
 		if isEveryoneBidded {
+			manager.calculateBiggestBidder()
 			manager.trumpStage()
 		}
 	})
@@ -163,18 +164,9 @@ func mountWSHandlers() {
 			return
 		}
 
-		user := manager.getUser(wm.UserId)
+		log.Println("users leftovers", leftovers)
 
-		for _, leftover := range leftovers {
-			index := user.findCardIndex(leftover)
-			user.removeCard(index)
-		}
-
-		user.addCards(manager.leftOverCards...)
-		manager.leftOverCards = leftovers
-		manager.biggestBidUser.sendCards()
-
-		manager.leftoverDone = true
+		manager.userPickLeftovers(leftovers)
 		manager.realGameStart()
 	})
 

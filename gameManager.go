@@ -64,6 +64,11 @@ type Card struct {
 	Owner  *User  `json:"owner"`
 }
 
+func (card *Card) hideConfidentials() {
+	card.Type = ""
+	card.Number = ""
+}
+
 type DeskCard struct {
 	User *User `json:"user"`
 	Card *Card `json:"card"`
@@ -258,7 +263,7 @@ func (manager *GameManager) runDesk() {
 
 		if nextUser.Type == UserType.Bot {
 			// nextUser.botManager.Run()
-			card := nextUser.cards[0]
+			card := nextUser.cards[rand.Intn(len(nextUser.cards))]
 			manager.onCardSent(nextUser, card)
 		}
 	}()
@@ -301,6 +306,23 @@ func (manager *GameManager) calculateWinner() *User {
 		}
 	}
 	return winner
+}
+
+func (manager *GameManager) calculateBiggestBidder() {
+	var biggestBidUser *User
+	biggestBid := math.MinInt
+	biggestBidUserIndex := 0
+
+	for index, user := range manager.Users {
+		if biggestBid < user.Bid {
+			biggestBid = user.Bid
+			biggestBidUser = user
+			biggestBidUserIndex = index
+		}
+	}
+
+	manager.currentIndex = biggestBidUserIndex
+	manager.biggestBidUser = biggestBidUser
 }
 
 func (manager *GameManager) onCardSent(user *User, card Card) {
@@ -396,9 +418,7 @@ func (manager *GameManager) startGame() {
 
 	manager.generateRandomCards()
 	manager.announceUserList()
-
-	// fmt.Printf("%+v\n", manager.users)
-	// fmt.Printf("%+v", manager.leftOverCards)
+	manager.sendOthersCards()
 }
 
 func (manager *GameManager) bidStage() {
@@ -409,6 +429,7 @@ func (manager *GameManager) bidStage() {
 		time.Sleep(10 * time.Second)
 
 		if manager.Stage == Stage.Bid {
+			manager.calculateBiggestBidder()
 			manager.trumpStage()
 		}
 	}()
@@ -418,22 +439,7 @@ func (manager *GameManager) trumpStage() {
 	manager.setStage(Stage.Trump)
 	manager.announceStage()
 
-	var biggestBidUser *User
-	biggestBid := math.MinInt
-	biggestBidUserIndex := 0
-
-	for index, user := range manager.Users {
-		if biggestBid < user.Bid {
-			biggestBid = user.Bid
-			biggestBidUser = manager.Users[index]
-			biggestBidUserIndex = index
-		}
-	}
-
-	manager.currentIndex = biggestBidUserIndex
-	manager.biggestBidUser = biggestBidUser
-
-	biggestBidUser.sendMessage(WSResponseMessage{
+	manager.biggestBidUser.sendMessage(WSResponseMessage{
 		Type: "selectTrump",
 	})
 
@@ -444,7 +450,7 @@ func (manager *GameManager) trumpStage() {
 
 		if manager.Stage == Stage.Trump {
 			if manager.Trump == "" {
-				biggestBidUser.trump = Maca
+				manager.biggestBidUser.trump = Maca
 				manager.Trump = Maca
 			}
 
@@ -474,24 +480,68 @@ func (manager *GameManager) leftoverStage() {
 		}
 
 		if !manager.leftoverDone {
-			cards := []Card{}
-
-			for i := 0; i < 4; i++ {
-				randIndex := rand.Intn(len(manager.biggestBidUser.cards))
-				card := manager.biggestBidUser.cards[randIndex]
-				cards = append(cards, card)
-				manager.biggestBidUser.removeCard(randIndex)
-			}
-
-			manager.biggestBidUser.addCards(manager.leftOverCards...)
-			manager.leftOverCards = cards
-			manager.biggestBidUser.sendCards()
+			cards := manager.selectRandomLeftovers()
+			manager.afterLeftOverStage(cards)
 		}
 
 		if manager.Stage == Stage.Leftover {
 			manager.realGameStart()
 		}
 	}()
+}
+
+func (manager *GameManager) userPickLeftovers(leftovers []Card) {
+	manager.leftoverDone = true
+	user := manager.biggestBidUser
+
+	for _, leftover := range leftovers {
+		index := user.findCardIndex(leftover)
+		user.removeCard(index)
+	}
+
+	manager.afterLeftOverStage(leftovers)
+}
+
+func (manager *GameManager) selectRandomLeftovers() []Card {
+	cards := []Card{}
+
+	for i := 0; i < 4; i++ {
+		randIndex := rand.Intn(len(manager.biggestBidUser.cards))
+		card := manager.biggestBidUser.cards[randIndex]
+		cards = append(cards, card)
+		manager.biggestBidUser.removeCard(randIndex)
+	}
+
+	return cards
+}
+
+func (manager *GameManager) afterLeftOverStage(cards []Card) {
+	manager.biggestBidUser.addCards(manager.leftOverCards...)
+	manager.leftOverCards = cards
+	manager.biggestBidUser.sendCards()
+}
+
+func (manager *GameManager) sendOthersCards() {
+	var othersCards []Card
+	for i := 0; i < len(manager.Users); i++ {
+		user := manager.Users[i]
+		if manager.biggestBidUser != nil && user.Id == manager.biggestBidUser.Id {
+			continue
+		}
+
+		othersCards = append(othersCards, user.cards...)
+	}
+
+	for i := 0; i < len(othersCards); i++ {
+		othersCards[i].hideConfidentials()
+	}
+
+	othersCardsJson, _ := json.Marshal(othersCards)
+
+	manager.sendMessage(WSResponseMessage{
+		Type:    "othersCards",
+		Message: string(othersCardsJson),
+	})
 }
 
 func (manager *GameManager) realGameStart() {

@@ -26,6 +26,10 @@ function getRandomInt(min, max) {
   return Math.floor(Math.random() * (max - min) + min); // The maximum is exclusive and the minimum is inclusive
 }
 
+const sleep = (ms) => {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
 const mockCards = [
   { id: 'e292fcfd-de4e-4b03-836c-887d11e819d6', type: 'spade', number: 'A', status: 'indeck' },
   { id: '52311077-18ed-4ee1-8ccc-f6383aea53b1', type: 'spade', number: 'K', status: 'indeck' },
@@ -42,7 +46,7 @@ const mockCards = [
   { id: 'b175e4eb-decb-488c-a25c-f0c333a0a9fc', type: 'spade', number: '2', status: 'indeck' },
 ]
 
-const mockOtherCards = [
+const mockOthersCards = [
   { id: '6f5edcba-d65c-4549-a7aa-7549539ef344', type: 'heart', number: 'A', status: 'indeck', owner: 'top', position: 'top' },
   { id: '5aa66fe1-9608-4c6e-9fd3-2a21e3b7f136', type: 'heart', number: 'K', status: 'indeck', owner: 'top', position: 'top' },
   { id: '22c66f71-7f2b-4ddc-aecc-fd229c801e71', type: 'heart', number: 'Q', status: 'indeck', owner: 'top', position: 'top' },
@@ -85,6 +89,28 @@ const mockOtherCards = [
   { id: 'ae1f793e-0304-4366-a0b3-fcbbfa778af5', type: 'diamond', number: '3', status: 'indeck', owner: 'right', position: 'right' },
   { id: '6dc9e9ec-e35b-4455-8296-799327b4f696', type: 'diamond', number: '2', status: 'indeck', owner: 'right', position: 'right' },
 ]
+
+const playerPositions = {
+  10: "bottom",
+  1: "right",
+  // 2: "top",
+  2: "left",
+  3: "left"
+}
+
+const cardTypeSortOrder = {
+  spade: 1,
+  heart: 2,
+  club: 3,
+  diamond: 4
+}
+
+const cardSortOrder = {
+  A: 30,
+  J: 25,
+  Q: 26,
+  K: 27
+}
 
 const app = createApp({
   methods: {
@@ -139,17 +165,18 @@ const app = createApp({
     },
 
     onCardClick(e, card) {
-      console.log('card:', card)
-      console.log('game.stage:', this.game.stage)
+      console.log('onCardClick :: card:', card)
+      console.log('onCardClick :: game.stage:', this.game.stage)
 
       const cardNode = e.target.parentNode
+      console.log('onCardClick :: cardNode:', { cardNode })
 
       if (this.game.stage === 'leftover') {
         this.leftovers.push(card)
-        cardNode.classList.add('leftover')
 
-        const cardIndex = this.cards.findIndex(item => item === card)
+        const cardIndex = this.cards.findIndex(item => item.id === card.id)
         this.cards[cardIndex].status = 'leftover'
+        console.log('onCardClick :: this.cards[cardIndex]:', this.cards[cardIndex])
 
         if (this.leftovers.length === 4) {
           socket.send(JSON.stringify({
@@ -163,22 +190,21 @@ const app = createApp({
         return
       }
 
-      // if (!this.myturn) return
-      // if (this.isDisabledCard(card)) return
+      if (!this.myturn) return
+      if (this.isDisabledCard(card)) return
 
       // TODO:
-      cardNode.classList.remove('indeck')
-      cardNode.style.setProperty('transform', `rotate(${getRandomInt(-10, 10)}deg) translate3d(-19.2563px, 124.66px, 0px) rotate(0deg) rotateY(0deg) scale(${this.scale}) rotateY(360deg)`)
+      cardNode.style.setProperty('transform', `rotate(${getRandomInt(-10, 10)}deg) translate3d(${-30 * this.scale}px, ${160 * this.scale}px, 0px) rotate(0deg) rotateY(0deg) scale(${this.scale}) rotateY(360deg)`)
 
-      // socket.send(JSON.stringify({
-      //   type: 'sendCard',
-      //   userid: this.user.id,
-      //   username: this.user.name,
-      //   message: JSON.stringify(card)
-      // }))
+      socket.send(JSON.stringify({
+        type: 'sendCard',
+        userid: this.user.id,
+        username: this.user.name,
+        message: JSON.stringify(card)
+      }))
       // this.cards = this.cards.filter(item => item !== card)
 
-      const cardIndex = this.cards.findIndex(item => item === card)
+      const cardIndex = this.cards.findIndex(item => item.id === card.id)
       this.cards[cardIndex].status = 'indesk'
     },
 
@@ -187,6 +213,7 @@ const app = createApp({
       if (!this.myturn) _r = true
       if (this.animatingWinner) _r = true
       if (this.selectLeftoverStage) _r = false
+      if (this.status === 'indesk') _r = true
       if (_r !== null) return _r
 
       if (this.desk.length === 0) return false
@@ -214,7 +241,7 @@ const app = createApp({
     },
 
     adjustCardsPositions() {
-      console.log('adjustCardsPositions :: ')
+      console.log('adjustCardsPositions :: triggered')
 
       const cardWidth = 182
       const cardHeight = 247
@@ -241,18 +268,23 @@ const app = createApp({
         return values.map(x => x + value / 2)
       }
 
-      const setTransform = (node, rotate, translate3dX, translate3dY, scale, index) => {
+      const setTransform = ({ card, cardNode, rotation, translate3dX, translate3dY, scale, index, rotateZ }) => {
         let transform = ''
-        transform = `${transform} rotate(${rotate}deg)`
+        transform = `${transform} rotate(${rotation}deg)`
         transform = `${transform} translate3d(${translate3dX}px, ${translate3dY}px, 0px)`
+        transform = `${transform} rotate(0deg)`
         transform = `${transform} rotateY(180deg)`
         transform = `${transform} scale(${scale})`
+        transform = `${transform} rotateY(360deg)`
 
-        if (node.classList.contains('initial')) {
-          node.classList.remove('initial')
-          node.style.setProperty('transition-delay', `${0.02 * index}s`)
+        if (rotateZ) transform = `${transform} rotateZ(${rotateZ}deg)`
+
+        // console.log('setTransform', { card }, transform)
+
+        if (card.status === 'initial') {
+          cardNode.style.setProperty('transition-delay', `${0.02 * index}s`)
         }
-        node.style.setProperty('transform', transform)
+        cardNode.style.setProperty('transform', transform)
       }
 
       const rotations = getRotations(this.myCardsOnDeck.length, 0.4)
@@ -265,7 +297,7 @@ const app = createApp({
         const card = this.myCardsOnDeck[index];
         const cardNode = document.getElementById(card.id)
         if (!cardNode) {
-          console.log('cardNode not found', card.id)
+          console.log('adjustCardsPositions :: cardNode not found', card.id)
           continue
         }
 
@@ -278,8 +310,7 @@ const app = createApp({
         transform = `${transform} translate3d(${translate3dX}px, ${translate3dY}px, 0px)`
         transform = `${transform} scale(${scale})`
 
-        if (cardNode.classList.contains('initial')) {
-          cardNode.classList.remove('initial')
+        if (card.status === 'initial') {
           cardNode.style.setProperty('transition-delay', `${0.01 * index}s`)
         }
 
@@ -292,70 +323,86 @@ const app = createApp({
         const card = this.cards[index];
         const cardNode = document.getElementById(card.id)
         if (!cardNode) {
-          console.log('cardNode not found', card.id)
+          console.log('adjustCardsPositions :: cardNode not found', card.id)
           continue
         }
 
-        if (cardNode?.classList.contains('leftover')) {
+        if (card.status === 'leftover') {
+          console.log('adjustCardsPositions :: leftover')
           let rotation = 0
           let translate3dX = leftoverTranslate3dXs[leftoverIndex++]
           let translate3dY = 0
-          setTransform(cardNode, rotation, translate3dX, translate3dY, scale, index)
-          cardNode.style.setProperty('z-index', index + 10)
+          setTransform({ card, cardNode, rotation, translate3dX, translate3dY, scale, leftoverIndex })
+          cardNode.style.setProperty('z-index', leftoverIndex + 10)
+          console.log('adjustCardsPositions :: leftover > ', { cardNode })
         }
       }
 
-      const topRotations = getRotations(this.otherCardsTop.length, -0.7)
-      const topTranslate3dXs = getTranslate3dX(this.otherCardsTop.length, 0.275)
+      const topRotations = getRotations(this.othersCardsTop.length, -0.7)
+      const topTranslate3dXs = getTranslate3dX(this.othersCardsTop.length, 0.275)
 
-      const leftRotations = getRotations(this.otherCardsLeft.length, -0.7)
-      const leftTranslate3dXs = getTranslate3dX(this.otherCardsLeft.length, 0.275)
+      const leftRotations = getRotations(this.othersCardsLeft.length, -0.7)
+      const leftTranslate3dXs = getTranslate3dX(this.othersCardsLeft.length, 0.275)
 
-      const rightRotations = getRotations(this.otherCardsRight.length, -0.7)
-      const rightTranslate3dXs = getTranslate3dX(this.otherCardsRight.length, 0.275)
+      const rightRotations = getRotations(this.othersCardsRight.length, -0.7).reverse()
+      const rightTranslate3dXs = getTranslate3dX(this.othersCardsRight.length, 0.275).reverse()
 
       // top
-      for (let index = 0; index < this.otherCardsTop.length; index++) {
-        const card = this.otherCardsTop[index];
+      for (let index = 0; index < this.othersCardsTop.length; index++) {
+        const card = this.othersCardsTop[index];
         const cardNode = document.getElementById(card.id)
+        if (!cardNode) {
+          console.log('adjustCardsPositions :: cardNode not found', card.id)
+          continue
+        }
 
-        const rotate = topRotations[index]
+        const rotation = topRotations[index]
         const translate3dX = topTranslate3dXs[index]
         const translate3dY = -windowHeight / 2 + 125 * scale
 
-        setTransform(cardNode, rotate, translate3dX, translate3dY, scale, index)
-        cardNode.style.setProperty('z-index', this.otherCardsTop.length - index + 10)
+        setTransform({ card, cardNode, rotation, translate3dX, translate3dY, scale, index })
+        cardNode.style.setProperty('z-index', this.othersCardsTop.length - index + 10)
       }
 
       // left
-      for (let index = 0; index < this.otherCardsLeft.length; index++) {
-        const card = this.otherCardsLeft[index];
+      for (let index = 0; index < this.othersCardsLeft.length; index++) {
+        const card = this.othersCardsLeft[index];
         const cardNode = document.getElementById(card.id)
+        if (!cardNode) {
+          console.log('adjustCardsPositions :: cardNode not found', card.id)
+          continue
+        }
 
-        const rotate = 90 - leftRotations[index]
+        const rotation = 90 - leftRotations[index]
         const translate3dX = leftTranslate3dXs[index]
-        const translate3dY = windowWidth / 2 - 125 * scale
+        const translate3dY = windowWidth / 2 - cardHeight * scale + 125 * scale
 
-        setTransform(cardNode, rotate, translate3dX, translate3dY, scale, index)
-        cardNode.style.setProperty('z-index', this.otherCardsLeft.length - index + 10)
+        setTransform({ card, cardNode, rotation, translate3dX, translate3dY, scale, index })
+        cardNode.style.setProperty('z-index', index + 10)
       }
 
       // right
-      for (let index = 0; index < this.otherCardsRight.length; index++) {
-        const card = this.otherCardsRight[index];
+      for (let index = 0; index < this.othersCardsRight.length; index++) {
+        const card = this.othersCardsRight[index];
         const cardNode = document.getElementById(card.id)
+        if (!cardNode) {
+          console.log('adjustCardsPositions :: cardNode not found', card.id)
+          continue
+        }
 
-        const rotate = 90 + rightRotations[index]
+        const rotation = -90 - rightRotations[index]
         const translate3dX = rightTranslate3dXs[index]
-        const translate3dY = -windowWidth / 2 + cardHeight * scale - 125 * scale
+        const translate3dY = windowWidth / 2 - cardHeight * scale + 125 * scale
+        const rotateZ = 180
 
-        setTransform(cardNode, rotate, translate3dX, translate3dY, scale, index)
-        cardNode.style.setProperty('z-index', index + 10)
+        setTransform({ card, cardNode, rotation, translate3dX, translate3dY, scale, index })
+        cardNode.style.setProperty('z-index', this.othersCardsRight.length - index + 10)
       }
     },
 
     calculateScale() {
-      console.log('onGameStarted :: ')
+      console.log('calculateScale :: triggered')
+      this.game.started = true
 
       this.window.width = window.innerWidth
       this.window.height = window.innerHeight
@@ -366,12 +413,12 @@ const app = createApp({
     },
 
     removeTransitionDelays() {
-      const allCards = [...this.cards, ...this.otherCards]
+      const allCards = [...this.cards, ...this.othersCards]
       for (let index = 0; index < allCards.length; index++) {
         const card = allCards[index];
         const cardNode = document.getElementById(card.id)
 
-        if (cardNode.style.transitionDelay) {
+        if (cardNode?.style.transitionDelay) {
           cardNode.style.removeProperty('transition-delay')
         }
       }
@@ -381,21 +428,137 @@ const app = createApp({
       window.addEventListener('resize', this.calculateScale)
     },
 
-    onGameStarted() {
-      console.log('onGameStarted :: ')
+    async onGameStarted() {
+      console.log('onGameStarted :: triggered')
 
-      setTimeout(() => {
-        const cards = this.$refs.gameRegion?.querySelectorAll('.poker-card') ?? []
-        for (let index = 0; index < cards.length; index++) {
-          const card = cards[index];
-          card.style.setProperty('transform', `${getComputedStyle(card).getPropertyValue('transform')} translate3d(-${index / 4 + 1}px, ${index / 4 + 1}px, 0px)`)
+      await this.$nextTick()
+
+      const cards = this.$refs.gameRegion?.querySelectorAll('.poker-card') ?? []
+      for (let index = 0; index < cards.length; index++) {
+        const card = cards[index];
+        card.style.setProperty('transform', `${getComputedStyle(card).getPropertyValue('transform')} translate3d(-${index / 4 + 1}px, ${index / 4 + 1}px, 0px)`)
+      }
+
+      await sleep(2000)
+
+      this.cards = this.cards.map(card => ({
+        ...card,
+        status: 'indeck',
+      }))
+
+      this.othersCards = this.othersCards.map(card => ({
+        ...card,
+        status: 'indeck',
+      }))
+
+      this.animatingIntro = false
+
+      await this.$nextTick()
+      this.calculateScale()
+      await this.$nextTick()
+      this.removeTransitionDelays()
+    },
+
+    setPlayerCards(_cards) {
+      let cards = this.calculateCardsValue(_cards)
+      cards = _.sortBy(cards, [
+        function (o) {
+          return cardTypeSortOrder[o.type]
+        }, function (o) {
+          return o.cmp
         }
-      }, 500)
+      ]);
 
-      console.log('this.$refs.gameRegion?', this.$refs.gameRegion)
+      if (!this.game.started) {
+        this.onGameStarted()
+      }
 
-      setTimeout(this.calculateScale, 2000)
-      setTimeout(this.removeTransitionDelays, 3000)
+      this.cards = cards
+    },
+
+    setOthersCards(_othersCards) {
+      let othersCards = _othersCards.filter(card => this.user.id !== card.owner.id)
+      this.othersCards = this.calculateCardsPositions(othersCards)
+    },
+
+    setDeskCards(_deskCards) {
+      console.log('setDeskCards :: triggered')
+
+      let deskCards = _deskCards.map(item => ({
+        card: this.calculateCardsValue([item.card]).at(0),
+        user: item.user
+      }))
+      this.desk = deskCards
+    },
+
+    socket_cardToDesk(deskCard) {
+      console.log('socket_cardToDesk :: triggered')
+
+      const userId = deskCard.user.id
+      const card = deskCard.card
+
+      console.log('socket_cardToDesk :: card', card)
+
+      if (userId === this.user.id) return
+
+      const userIndex = this.playerSeatOrder.findIndex(user => user === userId)
+      const userPosition = playerPositions[userIndex]
+      const cardNode = document.getElementById(card.id)
+      let rotation = getRandomInt(-10, 10)
+
+      if (userPosition === 'left') rotation += 90
+      else if (userPosition === 'right') rotation -= 90
+      else if (userPosition === 'top') rotation += 180
+
+      const cardsOnDesk = this.allCards.filter(item => item.status === 'indesk')
+
+      // TODO:
+      cardNode.style.setProperty('transform', `rotate(${rotation}deg) translate3d(${-30 * this.scale}px, ${160 * this.scale}px, 0px) rotate(0deg) rotateY(0deg) scale(${this.scale}) rotateY(360deg)`)
+      cardNode.style.setProperty('z-index', 100 + cardsOnDesk.length)
+
+      // update card
+      this.othersCards = this.othersCards.map(item => {
+        if (item.id !== card.id) return item
+
+        return {
+          ...item,
+          status: 'indesk',
+          type: card.type,
+          number: card.number,
+        }
+      })
+    },
+
+    async socket_roundWinner(roundWinner) {
+      console.log('socket_roundWinner :: triggered')
+
+      const roundWinnerId = roundWinner.id
+      const winnerIndex = this.playerSeatOrder.findIndex(user => user === roundWinnerId)
+      const winnerPosition = playerPositions[winnerIndex]
+
+      // TODO:
+
+      await sleep(1000)
+
+      // remove cards from dom
+      this.cards = this.cards.filter(item => item.status !== 'indesk')
+      this.othersCards = this.othersCards.filter(item => item.status !== 'indesk')
+    },
+
+    calculateCardsValue(cards) {
+      return cards.map(card => ({
+        cmp: cardSortOrder[card.number] ?? parseInt(card.number),
+        status: this.game.started ? 'indeck' : 'initial',
+        ...card
+      }))
+    },
+
+    calculateCardsPositions(cards) {
+      return cards.map(card => ({
+        status: this.game.started ? 'indeck' : 'initial',
+        position: playerPositions[app.playerSeatOrder.findIndex(id => id === card.owner?.id) ?? 10],
+        ...card
+      }))
     }
   },
   watch: {
@@ -411,32 +574,34 @@ const app = createApp({
       },
       deep: true
     },
-    cards: {
-      handler(_new, _old) {
-        this.adjustCardsPositions()
-      },
-      deep: true
-    }
   },
   computed: {
     isOwner() {
       return this.game.owner.id === this.user.id
     },
 
+    allCards() {
+      return [...this.cards, ...this.othersCards]
+    },
+
     myCardsOnDeck() {
       return this.cards.filter(item => item.status === 'indeck')
     },
 
-    otherCardsTop() {
-      return this.otherCards.filter(item => item.position === 'top')
+    otherCardsOnDeck() {
+      return this.othersCards.filter(item => item.status === 'indeck')
     },
 
-    otherCardsLeft() {
-      return this.otherCards.filter(item => item.position === 'left')
+    othersCardsTop() {
+      return this.otherCardsOnDeck.filter(item => item.position === 'top')
     },
 
-    otherCardsRight() {
-      return this.otherCards.filter(item => item.position === 'right')
+    othersCardsLeft() {
+      return this.otherCardsOnDeck.filter(item => item.position === 'left')
+    },
+
+    othersCardsRight() {
+      return this.otherCardsOnDeck.filter(item => item.position === 'right')
     },
   },
   data() {
@@ -447,6 +612,7 @@ const app = createApp({
         status: 'waiting',
         stage: 'created',
         started: false,
+        realStarted: false,
         trump: '',
         winner: {},
         owner: {}
@@ -463,15 +629,16 @@ const app = createApp({
       stage: 'create-game',
       users: [],
       cards: [],
-      otherCards: [],
+      othersCards: [],
       // cards: mockCards,
-      // otherCards: mockOtherCards,
+      // othersCards: mockOthersCards,
       desk: [],
       bidded: false,
       selectTrumpStage: false,
       selectLeftoverStage: false,
       leftovers: [],
       myturn: false,
+      animatingIntro: true,
       animatingWinner: false,
       turn: {
         id: '',
@@ -489,6 +656,18 @@ const app = createApp({
     this.user.id = user && user.id ? user.id : generateUUID()
     this.user.name = user && user.name ? user.name : ''
 
+    const handler = async (_new, _old) => {
+      console.log('cards watcher: _new', _new)
+      if (!this.game.started) return
+      console.log('cards watcher:', this.game.started)
+      await this.$nextTick()
+      this.adjustCardsPositions()
+    }
+
+    const throttled = _.throttle(handler, 100)
+    this.$watch('cards', throttled, { deep: true })
+    this.$watch('otherCardsOnDeck', throttled, { deep: true })
+
     const gameId = sessionStorage.getItem('gameId')
     if (gameId && false) {
       this.game.id = gameId
@@ -502,20 +681,6 @@ const app = createApp({
   }
 }).mount('#app')
 
-const cardTypeSortOrder = {
-  maca: 1,
-  kupa: 2,
-  sinek: 3,
-  karo: 4
-}
-
-const cardSortOrder = {
-  A: 30,
-  J: 25,
-  Q: 26,
-  K: 27
-}
-
 function sortPlayers(users) {
   let _users = []
 
@@ -527,15 +692,6 @@ function sortPlayers(users) {
   _users.push(...[...users.slice(0, index)].map(user => user.id))
 
   return _users
-}
-
-function calculateCardsValue(cards) {
-  return cards.map(card => ({
-    cmp: cardSortOrder[card.number] ?? parseInt(card.number),
-    status: 'indeck',
-    position: app.playerSeatOrder.findIndex(id => id === card.owner?.id),
-    ...card
-  }))
 }
 
 socket.addEventListener('message', function (message) {
@@ -586,30 +742,23 @@ socket.addEventListener('message', function (message) {
 
     case 'desk':
       let deskCards = JSON.parse(message.message)
-      deskCards = deskCards.map(item => ({
-        card: calculateCardsValue([item.card]).at(0),
-        user: item.user
-      }))
-      app.desk = deskCards
+      app.setDeskCards(deskCards)
       break;
 
     case 'cards':
       let cards = JSON.parse(message.message)
-      cards = calculateCardsValue(cards)
-      app.cards = _.sortBy(cards, [
-        function (o) {
-          return cardTypeSortOrder[o.type]
-        }, function (o) {
-          return o.cmp
-        }
-      ]);
-      app.onGameStarted()
+      app.setPlayerCards(cards)
+      break;
+
+    case 'othersCards':
+      let othersCards = JSON.parse(message.message)
+      app.setOthersCards(othersCards)
       break;
 
     case 'gameStarted':
       const trump = message.message
       app.game.trump = trump
-      app.game.started = true
+      app.game.realStarted = true
       app.selectTrumpStage = false
       app.selectLeftoverStage = false
       break;
@@ -649,120 +798,15 @@ socket.addEventListener('message', function (message) {
 
     case 'cardToDesk':
       const deskCard = JSON.parse(message.message)
-      const userId = deskCard.user.id
-      if (userId === app.user.id) return
-      const userIndex = app.playerSeatOrder.findIndex(user => user === userId)
-
-      // TODO:
+      app.socket_cardToDesk(deskCard)
       break;
 
     case 'roundWinner':
-      app.animatingWinner = true
       const roundWinner = JSON.parse(message.message)
-
-      const roundWinnerId = roundWinner.id
-      const winnerIndex = app.playerSeatOrder.findIndex(user => user === roundWinnerId)
-
-      // TODO:
+      app.socket_roundWinner(roundWinner)
       break;
 
     default:
       break;
   }
 })
-
-const gameRegion = document.getElementById('game-region')
-const cardWidth = 182
-const scale = 0.5
-
-const getRotations = (size, r) => {
-  const middle = parseInt(size / 2)
-  const odd = size % 2 === 1
-  const values = _.range(-middle, size - middle, 1).map(x => x * r)
-  if (odd) return values
-  return values.map(x => x + r / 2)
-}
-
-const getTranslate3dX = (size, aparture) => {
-  const middle = parseInt(size / 2)
-  const value = cardWidth * scale * aparture
-  const values = _.range(-middle, size - middle, 1).map(x => x * value)
-  const odd = size % 2 === 1
-  if (odd) return values
-  return values.map(x => x + value / 2)
-}
-
-// setTimeout(() => {
-//   const cards = gameRegion.querySelectorAll('.poker-card')
-//   const rotations = getRotations(13, 0.4)
-//   const translate3dXs = getTranslate3dX(13, 2 / 3)
-
-//   for (let index = 0; index < 13; index++) {
-//     const card = cards[index];
-
-//     let transform = ''
-//     transform = `${transform} rotate(${rotations[index]}deg)`
-//     transform = `${transform} translate3d(${translate3dXs[index]}px, 400px, 0px)`
-//     transform = `${transform} scale(${scale})`
-
-//     card.style.setProperty('transform', transform)
-//     card.style.setProperty('z-index', index + 10)
-
-//     card.addEventListener('click', () => {
-//       card.style.setProperty('transform', `rotate(${getRandomInt(-10, 10)}deg) translate3d(-19.2563px, 124.66px, 0px) rotate(0deg) rotateY(0deg) scale(${scale}) rotateY(360deg)`)
-//     })
-
-//     console.log(transform)
-//   }
-
-//   const rotationsOther = getRotations(13, -0.7)
-//   const translate3dXsOther = getTranslate3dX(13, 0.275)
-
-//   for (let index = 0; index < 13; index++) {
-//     const card = cards[index + 13];
-
-//     let transform = ''
-//     transform = `${transform} rotate(${rotationsOther[index]}deg)`
-//     transform = `${transform} translate3d(${translate3dXsOther[index]}px, -400px, 0px)`
-//     transform = `${transform} rotateY(180deg)`
-//     transform = `${transform} rotateX(180deg)`
-//     transform = `${transform} scale(${scale})`
-
-//     card.style.setProperty('transform', transform)
-//     card.style.setProperty('z-index', index + 10)
-
-//     console.log(transform)
-//   }
-
-//   for (let index = 0; index < 13; index++) {
-//     const card = cards[index + 26];
-
-//     let transform = ''
-//     transform = `${transform} rotate(${-90 - rotationsOther[index]}deg)`
-//     transform = `${transform} translate3d(${translate3dXsOther[index]}px, 400px, 0px)`
-//     transform = `${transform} rotateY(180deg)`
-//     transform = `${transform} rotateX(180deg)`
-//     transform = `${transform} scale(${scale})`
-
-//     card.style.setProperty('transform', transform)
-//     card.style.setProperty('z-index', index + 10)
-
-//     console.log(transform)
-//   }
-
-//   for (let index = 0; index < 13; index++) {
-//     const card = cards[index + 39];
-
-//     let transform = ''
-//     transform = `${transform} rotate(${90 - rotationsOther[index]}deg)`
-//     transform = `${transform} translate3d(${translate3dXsOther[index]}px, 400px, 0px)`
-//     transform = `${transform} rotateY(180deg)`
-//     transform = `${transform} rotateX(180deg)`
-//     transform = `${transform} scale(${scale})`
-
-//     card.style.setProperty('transform', transform)
-//     card.style.setProperty('z-index', index + 10)
-
-//     console.log(transform)
-//   }
-// }, 2000)

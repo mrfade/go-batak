@@ -302,6 +302,27 @@ button {
   perspective: 8000px;
   position: relative;
 
+  #statisticsBox {
+    position: absolute;
+    top: 2rem;
+    right: 2rem;
+  }
+
+  .start-game {
+    position: absolute;
+    border: none;
+    font-size: 1.5rem;
+    border-radius: 2.5rem;
+    padding: 1rem 2rem;
+    font-weight: 600;
+    cursor: pointer;
+    background-color: #d35400;
+    color: #f3f3f3;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
   .poker-card {
     border-radius: 8px;
     cursor: default;
@@ -612,6 +633,34 @@ button {
     border-right-color: transparent;
     border-top-color: transparent
   }
+
+  .bidding-area {
+    background: rgba(0, 0, 0, .5);
+    display: none;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    min-width: 400px;
+    padding: 20px;
+    text-align: center;
+    width: 100%;
+    z-index: 1000;
+    transform-style: preserve-3d;
+    perspective: 8000px;
+    border-radius: 3px;
+    box-shadow: 0 0 5px rgba(0, 0, 0, .5);
+    color: #f3f3f3;
+    transform: translate(-50%, -50%);
+
+    >span {
+      font-size: 1.2em;
+      margin: 2px;
+      padding: 5px 10px;
+      width: 12%;
+      background-color: rgba(0, 0, 0, .5);
+      cursor: pointer;
+    }
+  }
 }
 
 @keyframes spadesBroken {
@@ -623,5 +672,15 @@ button {
   to {
     transform: scale(.75);
     opacity: .8
+  }
+}
+
+@keyframes pulsing {
+  from {
+    box-shadow: 0 0 0 #000, inset 0 0 0 #f3f3f3, 0 0 0 0 #f3f3f3
+  }
+
+  to {
+    box-shadow: 0 0 0 #000, inset 0 0 10px #f3f3f3, 0 0 10px 10px #f3f3f3
   }
 }
