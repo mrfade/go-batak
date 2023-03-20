@@ -12,10 +12,10 @@ import (
 )
 
 const (
-	Maca  string = "spade"
-	Kupa  string = "heart"
-	Karo  string = "club"
-	Sinek string = "diamond"
+	Spade   string = "spade"
+	Heart   string = "heart"
+	Diamond string = "diamond"
+	Club    string = "club"
 )
 
 var Stage = newStageRegistry()
@@ -97,22 +97,22 @@ func (manager *GameManager) createCards() {
 	for _, _card := range CardsNumbers {
 		cardMaca := Card{
 			Id:     uuid.Must(uuid.NewRandom()).String(),
-			Type:   Maca,
+			Type:   Spade,
 			Number: _card,
 		}
 		cardKupa := Card{
 			Id:     uuid.Must(uuid.NewRandom()).String(),
-			Type:   Kupa,
+			Type:   Heart,
 			Number: _card,
 		}
 		cardKaro := Card{
 			Id:     uuid.Must(uuid.NewRandom()).String(),
-			Type:   Karo,
+			Type:   Diamond,
 			Number: _card,
 		}
 		cardSinek := Card{
 			Id:     uuid.Must(uuid.NewRandom()).String(),
-			Type:   Sinek,
+			Type:   Club,
 			Number: _card,
 		}
 
@@ -419,6 +419,9 @@ func (manager *GameManager) startGame() {
 	manager.generateRandomCards()
 	manager.announceUserList()
 	manager.sendOthersCards()
+	manager.sendMessage(WSResponseMessage{
+		Type: "roomStarted",
+	})
 }
 
 func (manager *GameManager) bidStage() {
@@ -450,8 +453,8 @@ func (manager *GameManager) trumpStage() {
 
 		if manager.Stage == Stage.Trump {
 			if manager.Trump == "" {
-				manager.biggestBidUser.trump = Maca
-				manager.Trump = Maca
+				manager.biggestBidUser.trump = Spade
+				manager.Trump = Spade
 			}
 
 			manager.sendMessage(WSResponseMessage{

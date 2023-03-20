@@ -12,6 +12,12 @@
 <body>
 
   <div id="app">
+    <div id="timer" :class="{running: timerRunning}">
+      <div class="bar"></div>
+    </div>
+    <div id="infobar">
+
+    </div>
 
     <div v-if="stage == 'create-game'" id="create-game">
       <div class="side">
@@ -130,14 +136,14 @@
         </div>
       </div>
 
-      <div v-for="player, index in playerSeatOrder" :key="player" class="info-board" :class="`board-${index}`"
+      <div v-for="player, index in players" :key="player" class="info-board" :class="`on-${player.position}`"
         :style="`padding:${300*scale}px ${window.lo + 500  * scale}px ${animatingIntro ? 'visibility:hidden;' : ''}`">
         <div class="message-bubble"></div>
-        <img class="player-avatar" :class="{highlight: turn.id === player}" src="/assets/player.png">
+        <img class="player-avatar" :class="{highlight: turn.id === player.id}" src="/assets/player.png">
         <div class="namearea">
-          <span class="player-name">{{ getUser(player).name }}</span>
+          <span class="player-name">{{ player.name }}</span>
           <span class="separator">•</span>
-          <span class="player-bid">{{ getUser(player).score }}/{{ getUser(player).bid }}</span>
+          <span class="player-bid">{{ player.score }}/{{ player.bid }}</span>
         </div>
       </div>
 
@@ -158,111 +164,6 @@
         <div class="front"></div>
         <div class="back"></div>
       </div>
-
-      <!-- <div class="poker-card flipped spade ready inrow"
-        style="transform: rotate(92.25deg) translate3d(28.6944px, 323.05px, 0px) rotate(0deg) rotateY(180deg) scale(0.5) rotateY(360deg); margin-left: -91px; margin-top: -123.5px; transition: transform 500ms ease 0s, box-shadow 200ms ease 0s; z-index: 19;">
-        <div class="front"
-          style="background-image: url('/assets/large_print_london.png'); background-position: -182px 0px; background-size: 2366px 988px; background-repeat: initial; background-attachment: initial; background-origin: initial; background-clip: initial;">
-        </div>
-        <div class="back" style="background-image: url('/assets/rhombus_blue.png'); background-size: 100% 100%;">
-        </div>
-      </div>
-      <div class="poker-card flipped heart ready inrow"
-        style="transform: rotate(177.75deg) translate3d(-50px, 382.75px, 0px) rotate(0deg) rotateY(180deg) scale(0.5) rotateY(360deg); margin-left: -91px; margin-top: -123.5px; transition: transform 500ms ease 0s, box-shadow 200ms ease 0s; z-index: 14;">
-        <div class="front"
-          style="background-image: url('/assets/large_print_london.png'); background-position: -364px -247px; background-size: 2366px 988px; background-repeat: initial; background-attachment: initial; background-origin: initial; background-clip: initial;">
-        </div>
-        <div class="back" style="background-image: url('/assets/rhombus_blue.png'); background-size: 100% 100%;">
-        </div>
-      </div>
-      <div class="poker-card flipped club ready inrow"
-        style="transform: rotate(-0.2deg) translate3d(0px, 382.75px, 0px) rotate(0deg) rotateY(180deg) scale(0.5) rotateY(360deg); margin-left: -91px; margin-top: -123.5px; transition: transform 500ms ease 0s, box-shadow 200ms ease 0s; z-index: 16;">
-        <div class="front"
-          style="background-image: url('/assets/large_print_london.png'); background-position: -546px -494px; background-size: 2366px 988px; background-repeat: initial; background-attachment: initial; background-origin: initial; background-clip: initial;">
-        </div>
-        <div class="back" style="background-image: url('/assets/rhombus_blue.png'); background-size: 100% 100%;">
-        </div>
-      </div>
-      <div class="poker-card flipped diamond ready inrow"
-        style="transform: rotate(2.2deg) translate3d(360px, 382.75px, 0px) rotate(0deg) rotateY(180deg) scale(0.5) rotateY(360deg); margin-left: -91px; margin-top: -123.5px; transition: transform 500ms ease 0s, box-shadow 200ms ease 0s; z-index: 22;">
-        <div class="front"
-          style="background-image: url('/assets/large_print_london.png'); background-position: -728px -741px; background-size: 2366px 988px; background-repeat: initial; background-attachment: initial; background-origin: initial; background-clip: initial;">
-        </div>
-        <div class="back" style="background-image: url('/assets/rhombus_blue.png'); background-size: 100% 100%;">
-        </div>
-      </div>
-      <div class="poker-card flipped spade ready inrow"
-        style="transform: rotate(179.55deg) translate3d(0px, 382.75px, 0px) rotate(0deg) rotateY(180deg) scale(0.5) rotateY(360deg); margin-left: -91px; margin-top: -123.5px; transition: transform 500ms ease 0s, box-shadow 200ms ease 0s; z-index: 16;">
-        <div class="front"
-          style="background-image: url('/assets/large_print_london.png'); background-position: -910px 0px; background-size: 2366px 988px; background-repeat: initial; background-attachment: initial; background-origin: initial; background-clip: initial;">
-        </div>
-        <div class="back" style="background-image: url('/assets/rhombus_blue.png'); background-size: 100% 100%;">
-        </div>
-      </div>
-      <div class="poker-card flipped heart ready inrow"
-        style="transform: rotate(-1.8deg) translate3d(-240px, 382.75px, 0px) rotate(0deg) rotateY(180deg) scale(0.5) rotateY(360deg); margin-left: -91px; margin-top: -123.5px; transition: transform 500ms ease 0s, box-shadow 200ms ease 0s; z-index: 12;">
-        <div class="front"
-          style="background-image: url('/assets/large_print_london.png'); background-position: -1092px -247px; background-size: 2366px 988px; background-repeat: initial; background-attachment: initial; background-origin: initial; background-clip: initial;">
-        </div>
-        <div class="back" style="background-image: url('/assets/rhombus_blue.png'); background-size: 100% 100%;">
-        </div>
-      </div>
-      <div class="poker-card flipped club ready inrow"
-        style="transform: rotate(85.95deg) translate3d(-118.306px, 323.05px, 0px) rotate(0deg) rotateY(180deg) scale(0.5) rotateY(360deg); margin-left: -91px; margin-top: -123.5px; transition: transform 500ms ease 0s, box-shadow 200ms ease 0s; z-index: 12;">
-        <div class="front"
-          style="background-image: url('/assets/large_print_london.png'); background-position: -1274px -494px; background-size: 2366px 988px; background-repeat: initial; background-attachment: initial; background-origin: initial; background-clip: initial;">
-        </div>
-        <div class="back" style="background-image: url('/assets/rhombus_blue.png'); background-size: 100% 100%;">
-        </div>
-      </div>
-      <div class="poker-card flipped diamond ready inrow"
-        style="transform: rotate(91.35deg) translate3d(7.69444px, 323.05px, 0px) rotate(0deg) rotateY(180deg) scale(0.5) rotateY(360deg); margin-left: -91px; margin-top: -123.5px; transition: transform 500ms ease 0s, box-shadow 200ms ease 0s; z-index: 18;">
-        <div class="front"
-          style="background-image: url('/assets/large_print_london.png'); background-position: -1456px -741px; background-size: 2366px 988px; background-repeat: initial; background-attachment: initial; background-origin: initial; background-clip: initial;">
-        </div>
-        <div class="back" style="background-image: url('/assets/rhombus_blue.png'); background-size: 100% 100%;">
-        </div>
-      </div>
-      <div class="poker-card flipped spade ready inrow"
-        style="transform: rotate(89.55deg) translate3d(-34.3056px, 323.05px, 0px) rotate(0deg) rotateY(180deg) scale(0.5) rotateY(360deg); margin-left: -91px; margin-top: -123.5px; transition: transform 500ms ease 0s, box-shadow 200ms ease 0s; z-index: 16;">
-        <div class="front"
-          style="background-image: url('/assets/large_print_london.png'); background-position: -1638px 0px; background-size: 2366px 988px; background-repeat: initial; background-attachment: initial; background-origin: initial; background-clip: initial;">
-        </div>
-        <div class="back" style="background-image: url('/assets/rhombus_blue.png'); background-size: 100% 100%;">
-        </div>
-      </div>
-      <div class="poker-card flipped heart ready inrow"
-        style="transform: rotate(175.95deg) translate3d(-100px, 382.75px, 0px) rotate(0deg) rotateY(180deg) scale(0.5) rotateY(360deg); margin-left: -91px; margin-top: -123.5px; transition: transform 500ms ease 0s, box-shadow 200ms ease 0s; z-index: 12;">
-        <div class="front"
-          style="background-image: url('/assets/large_print_london.png'); background-position: -1820px -247px; background-size: 2366px 988px; background-repeat: initial; background-attachment: initial; background-origin: initial; background-clip: initial;">
-        </div>
-        <div class="back" style="background-image: url('/assets/rhombus_blue.png'); background-size: 100% 100%;">
-        </div>
-      </div>
-      <div class="poker-card flipped club ready inrow"
-        style="transform: rotate(85.05deg) translate3d(-139.306px, 323.05px, 0px) rotate(0deg) rotateY(180deg) scale(0.5) rotateY(360deg); margin-left: -91px; margin-top: -123.5px; transition: transform 500ms ease 0s, box-shadow 200ms ease 0s; z-index: 11;">
-        <div class="front"
-          style="background-image: url('/assets/large_print_london.png'); background-position: -2002px -494px; background-size: 2366px 988px; background-repeat: initial; background-attachment: initial; background-origin: initial; background-clip: initial;">
-        </div>
-        <div class="back" style="background-image: url('/assets/rhombus_blue.png'); background-size: 100% 100%;">
-        </div>
-      </div>
-      <div class="poker-card flipped diamond ready inrow"
-        style="transform: rotate(182.25deg) translate3d(75px, 382.75px, 0px) rotate(0deg) rotateY(180deg) scale(0.5) rotateY(360deg); margin-left: -91px; margin-top: -123.5px; transition: transform 500ms ease 0s, box-shadow 200ms ease 0s; z-index: 19;">
-        <div class="front"
-          style="background-image: url('/assets/large_print_london.png'); background-position: -2184px -741px; background-size: 2366px 988px; background-repeat: initial; background-attachment: initial; background-origin: initial; background-clip: initial;">
-        </div>
-        <div class="back" style="background-image: url('/assets/rhombus_blue.png'); background-size: 100% 100%;">
-        </div>
-      </div>
-      <div class="poker-card flipped spade ready inrow"
-        style="transform: rotate(-90.45deg) translate3d(34.3056px, 323.05px, 0px) rotate(0deg) rotateY(180deg) scale(0.5) rotateY(360deg); margin-left: -91px; margin-top: -123.5px; transition: transform 500ms ease 0s, box-shadow 200ms ease 0s; z-index: 16;">
-        <div class="front"
-          style="background-image: url('/assets/large_print_london.png'); background-position: 0px 0px; background-size: 2366px 988px; background-repeat: initial; background-attachment: initial; background-origin: initial; background-clip: initial;">
-        </div>
-        <div class="back" style="background-image: url('/assets/rhombus_blue.png'); background-size: 100% 100%;">
-        </div>
-      </div> -->
     </div>
 
   </div>

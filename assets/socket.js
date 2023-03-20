@@ -91,7 +91,7 @@ const mockOthersCards = [
 ]
 
 const playerPositions = {
-  10: "bottom",
+  0: "bottom",
   1: "right",
   // 2: "top",
   2: "left",
@@ -398,6 +398,36 @@ const app = createApp({
         setTransform({ card, cardNode, rotation, translate3dX, translate3dY, scale, index })
         cardNode.style.setProperty('z-index', this.othersCardsRight.length - index + 10)
       }
+
+      // cards in waste
+      for (let index = 0; index < this.cardsInWaste.length; index++) {
+        const card = this.cardsInWaste[index];
+        const cardNode = document.getElementById(card.id)
+        if (!cardNode) {
+          console.log('adjustCardsPositions :: cardNode not found', card.id)
+          continue
+        }
+
+        let rotation = 0
+        let translate3dX = 0
+        let translate3dY = windowWidth / 2
+
+        if (card.position === 'right') {
+          rotation = 90
+          translate3dX = 0
+          translate3dY = -windowWidth / 2 - cardHeight * scale
+        } else if (card.position === 'top') {
+          translate3dX = 0
+          translate3dY = -windowWidth / 2 - cardHeight * scale
+        } else if (card.position === 'left') {
+          rotation = -90
+          translate3dX = 0
+          translate3dY = -windowWidth / 2 - cardHeight * scale
+        }
+
+        setTransform({ card, cardNode, rotation, translate3dX, translate3dY, scale, index })
+        cardNode.style.setProperty('z-index', 100)
+      }
     },
 
     calculateScale() {
@@ -491,6 +521,33 @@ const app = createApp({
       this.desk = deskCards
     },
 
+    socket_roomStarted() {
+      this.runTimer(10)
+    },
+
+    socket_gameStarted(trump) {
+      this.game.trump = trump
+      this.game.realStarted = true
+      this.selectTrumpStage = false
+      this.selectLeftoverStage = false
+
+      this.killTimer()
+    },
+
+    socket_selectTrump() {
+      this.selectTrumpStage = true
+      this.selectLeftoverStage = false
+
+      this.runTimer(10)
+    },
+
+    socket_selectLeftover() {
+      this.selectTrumpStage = false
+      this.selectLeftoverStage = true
+
+      this.runTimer(20)
+    },
+
     socket_cardToDesk(deskCard) {
       console.log('socket_cardToDesk :: triggered')
 
@@ -510,11 +567,9 @@ const app = createApp({
       else if (userPosition === 'right') rotation -= 90
       else if (userPosition === 'top') rotation += 180
 
-      const cardsOnDesk = this.allCards.filter(item => item.status === 'indesk')
-
       // TODO:
       cardNode.style.setProperty('transform', `rotate(${rotation}deg) translate3d(${-30 * this.scale}px, ${160 * this.scale}px, 0px) rotate(0deg) rotateY(0deg) scale(${this.scale}) rotateY(360deg)`)
-      cardNode.style.setProperty('z-index', 100 + cardsOnDesk.length)
+      cardNode.style.setProperty('z-index', 100 + this.cardsOnDesk.length)
 
       // update card
       this.othersCards = this.othersCards.map(item => {
@@ -536,13 +591,29 @@ const app = createApp({
       const winnerIndex = this.playerSeatOrder.findIndex(user => user === roundWinnerId)
       const winnerPosition = playerPositions[winnerIndex]
 
+      const cardIds = this.cardsOnDesk.map(card => card.id)
+      console.log('socket_roundWinner :: cardIds', cardIds)
+
+      const mapCardFn = item => {
+        if (!cardIds.includes(item.id)) return item
+
+        return {
+          ...item,
+          status: 'inwaste',
+          position: winnerPosition
+        }
+      }
+
       // TODO:
 
       await sleep(1000)
 
+      this.cards = this.cards.map(mapCardFn)
+      this.othersCards = this.othersCards.map(mapCardFn)
+
       // remove cards from dom
-      this.cards = this.cards.filter(item => item.status !== 'indesk')
-      this.othersCards = this.othersCards.filter(item => item.status !== 'indesk')
+      // this.cards = this.cards.filter(item => item.status !== 'indesk')
+      // this.othersCards = this.othersCards.filter(item => item.status !== 'indesk')
     },
 
     calculateCardsValue(cards) {
@@ -559,6 +630,31 @@ const app = createApp({
         position: playerPositions[app.playerSeatOrder.findIndex(id => id === card.owner?.id) ?? 10],
         ...card
       }))
+    },
+
+    runTimer(s) {
+      console.log('runTimer :: triggered', s)
+
+      this.killTimer()
+
+      this.$nextTick()
+      this.timerRunning = true
+      this.$nextTick()
+
+      this.timerPid = gsap.fromTo('#timer .bar', {
+        width: '100%'
+      }, {
+        width: 0,
+        duration: s,
+        ease: "none",
+        onComplete: () => {
+          this.timerRunning = false
+        }
+      })
+    },
+
+    killTimer() {
+      if (this.timerPid) this.timerPid.kill()
     }
   },
   watch: {
@@ -580,8 +676,28 @@ const app = createApp({
       return this.game.owner.id === this.user.id
     },
 
+    players() {
+      const users = this.playerSeatOrder.map((userId, index) => {
+        const user = this.users.find(user => user.id === userId)
+        return user ? {
+          ...user,
+          position: playerPositions[index],
+        } : {}
+      })
+      const filteredUsers = users.filter(user => !!user)
+      return filteredUsers
+    },
+
     allCards() {
       return [...this.cards, ...this.othersCards]
+    },
+
+    cardsOnDesk() {
+      return this.allCards.filter(item => item.status === 'indesk')
+    },
+
+    cardsInWaste() {
+      return this.allCards.filter(item => item.status === 'inwaste')
     },
 
     myCardsOnDeck() {
@@ -640,6 +756,8 @@ const app = createApp({
       myturn: false,
       animatingIntro: true,
       animatingWinner: false,
+      timerRunning: false,
+      timerPid: 0,
       turn: {
         id: '',
         name: ''
@@ -757,20 +875,15 @@ socket.addEventListener('message', function (message) {
 
     case 'gameStarted':
       const trump = message.message
-      app.game.trump = trump
-      app.game.realStarted = true
-      app.selectTrumpStage = false
-      app.selectLeftoverStage = false
+      app.socket_gameStarted(trump)
       break;
 
     case 'selectTrump':
-      app.selectTrumpStage = true
-      app.selectLeftoverStage = false
+      app.socket_selectTrump()
       break;
 
     case 'selectLeftover':
-      app.selectTrumpStage = false
-      app.selectLeftoverStage = true
+      app.socket_selectLeftover()
       break;
 
     case 'turn':
@@ -804,6 +917,10 @@ socket.addEventListener('message', function (message) {
     case 'roundWinner':
       const roundWinner = JSON.parse(message.message)
       app.socket_roundWinner(roundWinner)
+      break;
+
+    case 'roomStarted':
+      app.socket_roomStarted()
       break;
 
     default:

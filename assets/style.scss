@@ -26,9 +26,14 @@ button {
   width: 100%;
   height: 5px;
   background-color: #ddd;
+  z-index: 101;
+  display: none;
 
-  &::before {
-    content: " ";
+  &.running {
+    display: block;
+  }
+
+  .bar {
     position: absolute;
     top: 0;
     left: 0;
@@ -36,33 +41,6 @@ button {
     height: 5px;
     z-index: 1;
     background-color: #2980b9;
-    display: none;
-    // animation: alternate;
-  }
-
-  &.run::before {
-    display: block;
-    animation-name: htoz;
-    animation-timing-function: linear;
-    animation-iteration-count: 1;
-  }
-
-  &.t10s::before {
-    animation-duration: 10s;
-  }
-
-  &.t20s::before {
-    animation-duration: 20s;
-  }
-
-  @keyframes htoz {
-    from {
-      width: 100%;
-    }
-
-    to {
-      width: 0%;
-    }
   }
 }
 
@@ -486,153 +464,137 @@ button {
     box-sizing: content-box;
     padding: 5px;
     padding-top: 20px;
-    pointer-events: none
+    pointer-events: none;
+
+    &.on-bottom {
+      bottom: 0;
+      left: 0;
+
+      .message-bubble {
+        margin-left: 15px;
+      }
+    }
+
+    &.on-left {
+      left: 0;
+      top: 10%
+    }
+
+    &.on-top {
+      top: 0;
+      right: 10%
+    }
+
+    &.on-right {
+      right: 0;
+      bottom: 10%;
+
+      .message-bubble {
+        left: initial;
+        right: 60%;
+      }
+
+      .message-bubble:before {
+        left: initial;
+        right: -16px;
+        border: 8px solid rgba(0, 0, 0, .5);
+        border-bottom-color: transparent;
+        border-right-color: transparent;
+        border-top-color: transparent;
+      }
+    }
+
+    .player-avatar {
+      display: inline-block;
+      width: 60px;
+      height: 60px;
+      background-size: contain;
+      border-radius: 50%;
+      box-shadow: 1px 1px 2px rgba(0, 0, 0, .8);
+      pointer-events: all;
+      filter: drop-shadow(0 3px 3px rgba(0, 0, 0, .6));
+      cursor: pointer;
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
+
+      &.highlight {
+        animation: pulsing 1s alternate infinite
+      }
+    }
+
+    .namearea {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      .player-bid,
+      .player-name,
+      .separator {
+        font-family: -apple-system, "Helvetica Neue", Roboto, "Segoe UI", sans-serif;
+        font-weight: 700;
+        font-size: 1.3em;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, .8);
+        color: #fff;
+        padding: 0;
+        margin: 0
+      }
+
+      .separator {
+        margin: 0 6px;
+        margin-top: 5px;
+        display: inline-block;
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: #fff;
+        text-shadow: none;
+        color: transparent;
+        box-shadow: 1px 1px 2px rgba(0, 0, 0, .8)
+      }
+    }
+
+    .player-bidding.highlight {
+      transition: -webkit-filter 1s;
+    }
+
+    .message-bubble {
+      display: block;
+      padding: 10px;
+      min-width: 100px;
+      position: absolute;
+      background: rgba(0, 0, 0, .5);
+      left: 60%;
+      border-radius: 4px;
+      display: none;
+      color: #fff;
+      filter: drop-shadow(-2px 0 5px rgba(0, 0, 0, .4));
+
+      &.show {
+        display: block;
+      }
+
+      &:before {
+        content: "";
+        border: 8px solid rgba(0, 0, 0, .5);
+        border-bottom-color: transparent;
+        border-left-color: transparent;
+        border-top-color: transparent;
+        position: absolute;
+        top: 50%;
+        left: -16px;
+        margin-top: -8px;
+        z-index: 1000;
+      }
+    }
   }
 
-  .info-board.board-0 {
-    bottom: 0;
-    left: 0
-  }
+  // .cards-in-fan .info-board.board-1 {
+  //   left: 3%
+  // }
 
-  .info-board.board-1 {
-    left: 0;
-    top: 10%
-  }
-
-  .cards-in-fan .info-board.board-1 {
-    left: 3%
-  }
-
-  .info-board.board-2 {
-    top: 0;
-    right: 10%
-  }
-
-  .info-board.board-3 {
-    right: 0;
-    bottom: 10%
-  }
-
-  .cards-in-fan .info-board.board-3 {
-    right: 3%
-  }
-
-  .info-board.no-avatar .player-avatar {
-    display: none
-  }
-
-  .player-avatar.highlight {
-    animation: pulsing 1s alternate infinite
-  }
-
-  .info-board.new-avatar .player-avatar.highlight {
-    animation: new_pulsing 1s alternate infinite
-  }
-
-  .namearea {
-    display: flex;
-    align-items: center;
-    justify-content: center
-  }
-
-  .player-bid,
-  .player-name,
-  .separator {
-    font-family: -apple-system, "Helvetica Neue", Roboto, "Segoe UI", sans-serif;
-    font-weight: 700;
-    font-size: 1.3em;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, .8);
-    color: #fff;
-    padding: 0;
-    margin: 0
-  }
-
-  .separator {
-    margin: 0 6px;
-    margin-top: 5px;
-    display: inline-block;
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: #fff;
-    text-shadow: none;
-    color: transparent;
-    box-shadow: 1px 1px 2px rgba(0, 0, 0, .8)
-  }
-
-  .player-bidding.highlight {
-    transition: -webkit-filter 1s
-  }
-
-  .player-avatar {
-    display: inline-block;
-    width: 60px;
-    height: 60px;
-    background-size: contain;
-    border-radius: 50%;
-    box-shadow: 1px 1px 2px rgba(0, 0, 0, .8);
-    pointer-events: all;
-    filter: drop-shadow(0 3px 3px rgba(0, 0, 0, .6));
-    cursor: pointer;
-    image-rendering: -webkit-optimize-contrast;
-    image-rendering: crisp-edges
-  }
-
-  .info-board.new-avatar .player-avatar {
-    background-color: transparent;
-    border-radius: 0;
-    box-shadow: none;
-    width: 75px;
-    height: 75px
-  }
-
-  .board-0 .message-bubble {
-    margin-left: 15px
-  }
-
-  .message-bubble {
-    display: block;
-    padding: 10px;
-    min-width: 100px;
-    position: absolute;
-    background: rgba(0, 0, 0, .5);
-    left: 60%;
-    border-radius: 4px;
-    display: none;
-    color: #fff;
-    filter: drop-shadow(-2px 0 5px rgba(0, 0, 0, .4))
-  }
-
-  .board-3 .message-bubble {
-    left: initial;
-    right: 60%
-  }
-
-  .message-bubble.show {
-    display: block
-  }
-
-  .message-bubble:before {
-    content: "";
-    border: 8px solid rgba(0, 0, 0, .5);
-    border-bottom-color: transparent;
-    border-left-color: transparent;
-    border-top-color: transparent;
-    position: absolute;
-    top: 50%;
-    left: -16px;
-    margin-top: -8px;
-    z-index: 1000
-  }
-
-  .board-3 .message-bubble:before {
-    left: initial;
-    right: -16px;
-    border: 8px solid rgba(0, 0, 0, .5);
-    border-bottom-color: transparent;
-    border-right-color: transparent;
-    border-top-color: transparent
-  }
+  // .info-board .info-board .cards-in-fan .info-board.board-3 {
+  //   right: 3%
+  // }
 
   .bidding-area {
     background: rgba(0, 0, 0, .5);
