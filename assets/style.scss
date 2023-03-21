@@ -15,6 +15,16 @@ body,
   font-family: 'Poppins', sans-serif;
 }
 
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  padding: 0;
+  margin: 0;
+}
+
 button {
   font-family: 'Poppins', sans-serif;
 }
@@ -321,12 +331,16 @@ button {
     transition: transform 500ms ease 0s, box-shadow 200ms ease 0s;
 
     &.ready {
-      box-shadow: 0 0 5px rgba(0, 0, 0, .1)
+      box-shadow: 0 0 5px rgba(0, 0, 0, .1);
     }
 
     &.initial {
       transform: rotate(0deg) rotateY(180deg) scale(0.5) rotateY(360deg);
       transition: transform 600ms ease 0s, box-shadow 200ms ease 0s;
+    }
+
+    &.movable {
+      cursor: pointer;
     }
 
     >.back,
@@ -366,7 +380,7 @@ button {
     }
 
     &.movable:hover .front {
-      box-shadow: 0 0 20px 5px #add8e6
+      box-shadow: 0 0 20px 5px #add8e6;
     }
 
     &.spades-broken:after {
@@ -445,14 +459,6 @@ button {
     }
   }
 
-  .select-trump {
-    @for $i from 1 through 4 {
-      .poker-card:nth-child(#{$i}) {
-        transform: translate3d(calc((#{-288 + ($i - 1) * 192}px) * var(--scale)), 0px, 0px) scale(var(--scale));
-      }
-    }
-  }
-
   .info-board {
     position: absolute;
     z-index: 200;
@@ -465,6 +471,14 @@ button {
     padding: 5px;
     padding-top: 20px;
     pointer-events: none;
+    visibility: hidden;
+    opacity: 0;
+    transition: 1s opacity;
+
+    &.show {
+      visibility: visible;
+      opacity: 1;
+    }
 
     &.on-bottom {
       bottom: 0;
@@ -588,24 +602,18 @@ button {
     }
   }
 
-  // .cards-in-fan .info-board.board-1 {
-  //   left: 3%
-  // }
-
-  // .info-board .info-board .cards-in-fan .info-board.board-3 {
-  //   right: 3%
-  // }
-
-  .bidding-area {
+  .modal {
+    pointer-events: auto;
     background: rgba(0, 0, 0, .5);
-    display: none;
+    display: flex;
+    visibility: hidden;
+    opacity: 0;
     position: absolute;
     left: 50%;
     top: 50%;
     min-width: 400px;
-    padding: 20px;
+    padding: 1.5rem;
     text-align: center;
-    width: 100%;
     z-index: 1000;
     transform-style: preserve-3d;
     perspective: 8000px;
@@ -613,27 +621,66 @@ button {
     box-shadow: 0 0 5px rgba(0, 0, 0, .5);
     color: #f3f3f3;
     transform: translate(-50%, -50%);
+    flex-direction: column;
+    gap: 1.5rem;
+    transition: 300ms opacity;
 
-    >span {
-      font-size: 1.2em;
-      margin: 2px;
-      padding: 5px 10px;
-      width: 12%;
-      background-color: rgba(0, 0, 0, .5);
-      cursor: pointer;
+    &.show {
+      visibility: visible;
+      opacity: 1;
     }
   }
-}
 
-@keyframes spadesBroken {
-  from {
-    transform: scale(1);
-    opacity: 1
+  .bidding-modal {
+    .bids {
+      display: flex;
+      gap: 0.5rem;
+
+      >span {
+        font-size: 1.2em;
+        padding: 0.25rem 0.5rem;
+        width: 2.5rem;
+        background-color: rgba(0, 0, 0, .5);
+        cursor: pointer;
+      }
+    }
   }
 
-  to {
-    transform: scale(.75);
-    opacity: .8
+  .trump-modal {
+    .cards {
+      display: flex;
+      gap: 0.5rem;
+
+      .card {
+        width: calc(182px * var(--scale));
+        height: calc(247px * var(--scale));
+        transition: 300ms transform;
+        cursor: pointer;
+
+        .poker-card {
+          cursor: unset;
+          position: relative;
+          margin: 0;
+          top: 0;
+          left: 0;
+          transform: scale(var(--scale));
+          transform-origin: top;
+          -webkit-transform-origin-x: left;
+        }
+
+        &:hover {
+          transform: scale(1.1);
+        }
+      }
+    }
+  }
+
+  .winner-modal {
+    padding: 3rem 6rem;
+
+    h3 {
+      font-size: 2rem;
+    }
   }
 }
 

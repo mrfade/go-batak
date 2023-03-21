@@ -429,7 +429,7 @@ func (manager *GameManager) bidStage() {
 	manager.announceStage()
 
 	go func() {
-		time.Sleep(10 * time.Second)
+		time.Sleep(25 * time.Second)
 
 		if manager.Stage == Stage.Bid {
 			manager.calculateBiggestBidder()

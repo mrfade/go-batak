@@ -117,27 +117,9 @@
         Start Game
       </button>
 
-      <h3 v-if="game.stage === 'finished' && game.winner">
-        Winner is {{ game.winner.name }} with score {{game.winner.score }}
-      </h3>
-
-      <div v-if="selectTrumpStage" class="select-trump">
-        <div class="poker-card card-type-diamond card-num-a" @click="selectTrump('diamond')">
-          <div class="front"></div>
-        </div>
-        <div class="poker-card card-type-club card-num-a" @click="selectTrump('club')">
-          <div class="front"></div>
-        </div>
-        <div class="poker-card card-type-heart card-num-a" @click="selectTrump('heart')">
-          <div class="front"></div>
-        </div>
-        <div class="poker-card card-type-spade card-num-a" @click="selectTrump('spade')">
-          <div class="front"></div>
-        </div>
-      </div>
-
-      <div v-for="player, index in players" :key="player" class="info-board" :class="`on-${player.position}`"
-        :style="`padding:${300*scale}px ${window.lo + 500  * scale}px ${animatingIntro ? 'visibility:hidden;' : ''}`">
+      <div v-for="player, index in players" :key="player" class="info-board"
+        :class="`on-${player.position} ${!animatingIntro && game.stage !== 'finished' ? 'show' : ''}`"
+        :style="`padding:${300*scale}px ${window.lo + 400  * scale}px`">
         <div class="message-bubble"></div>
         <img class="player-avatar" :class="{highlight: turn.id === player.id}" src="/assets/player.png">
         <div class="namearea">
@@ -147,9 +129,46 @@
         </div>
       </div>
 
-      <div class="bidding-area" :style="`${game.stage === 'bid' && !animatingIntro ? 'display:block;' : ''}`">
+      <div class="modal winner-modal" :class="{show: game.stage === 'finished' && game.winner}">
+        <h3>Winner is {{ game.winner.name }} with score {{game.winner.score }}</h3>
+      </div>
+
+      <div class="modal leftover-modal" :class="{show: selectLeftoverStage}">
+        <h3>Please select leftovers</h3>
+      </div>
+
+      <div class="modal trump-modal" :class="{show: selectTrumpStage}">
+        <h3>Please select a trump</h3>
+
+        <div class="cards">
+          <div class="card">
+            <div class="poker-card card-type-diamond card-num-a" @click="selectTrump('diamond')">
+              <div class="front"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="poker-card card-type-club card-num-a" @click="selectTrump('club')">
+              <div class="front"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="poker-card card-type-heart card-num-a" @click="selectTrump('heart')">
+              <div class="front"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="poker-card card-type-spade card-num-a" @click="selectTrump('spade')">
+              <div class="front"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal bidding-modal" :class="{show: game.stage === 'bid' && !animatingIntro}">
         <h3>Please select a bid</h3>
-        <span v-for="i in 16" @click="bid(i)">{{i}}</span>
+        <div class="bids">
+          <span v-for="i in 16" @click="bid(i)">{{i}}</span>
+        </div>
       </div>
 
       <div v-for="card in cards" :key="card.id" :id="card.id" class="poker-card flipped ready"
@@ -171,6 +190,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.2.47/vue.global.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.4/gsap.min.js"></script>
+  <script
+    src="https://cdnjs.cloudflare.com/ajax/libs/tsparticles-confetti/2.9.3/tsparticles.confetti.bundle.min.js"></script>
   <script src="/assets/socket.js"></script>
 </body>
 

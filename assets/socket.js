@@ -30,6 +30,40 @@ const sleep = (ms) => {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+const runConfetti = () => {
+  const duration = 15 * 1000,
+    animationEnd = Date.now() + duration,
+    defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+  function randomInRange(min, max) {
+    return Math.random() * (max - min) + min;
+  }
+
+  const interval = setInterval(function () {
+    const timeLeft = animationEnd - Date.now();
+
+    if (timeLeft <= 0) {
+      return clearInterval(interval);
+    }
+
+    const particleCount = 50 * (timeLeft / duration);
+
+    // since particles fall down, start a bit higher than random
+    confetti(
+      Object.assign({}, defaults, {
+        particleCount,
+        origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
+      })
+    );
+    confetti(
+      Object.assign({}, defaults, {
+        particleCount,
+        origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
+      })
+    );
+  }, 250);
+}
+
 const mockCards = [
   { id: 'e292fcfd-de4e-4b03-836c-887d11e819d6', type: 'spade', number: 'A', status: 'indeck' },
   { id: '52311077-18ed-4ee1-8ccc-f6383aea53b1', type: 'spade', number: 'K', status: 'indeck' },
@@ -213,24 +247,24 @@ const app = createApp({
       if (!this.myturn) _r = true
       if (this.animatingWinner) _r = true
       if (this.selectLeftoverStage) _r = false
-      if (this.status === 'indesk') _r = true
+      if (card.status === 'indesk') _r = true
       if (_r !== null) return _r
 
       if (this.desk.length === 0) return false
 
       const deskFirst = this.desk[0].card
-      const doesUserHaveDeskType = this.cards.findIndex(item => item.type === deskFirst.type) > -1
+      const doesUserHaveDeskType = this.myCardsOnDeck.findIndex(item => item.type === deskFirst.type) > -1
       if (deskFirst.type !== card.type && doesUserHaveDeskType) return true
 
-      const doesUserHaveTrump = this.cards.findIndex(item => item.type === this.game.trump) > -1
+      const doesUserHaveTrump = this.myCardsOnDeck.findIndex(item => item.type === this.game.trump) > -1
       if (!doesUserHaveDeskType && doesUserHaveTrump && card.type !== this.game.trump) return true
 
       const deskTypeBiggestTrump = this.desk.filter(item => item.card.type === this.game.trump).sort((a, b) => b.cmp - a.cmp).at(0)
-      const doesUserHaveBiggerTrump = deskTypeBiggestTrump && this.cards.findIndex(item => item.type === this.game.trump && deskTypeBiggestTrump.cmp > card.cmp) > -1
+      const doesUserHaveBiggerTrump = deskTypeBiggestTrump && this.myCardsOnDeck.findIndex(item => item.type === this.game.trump && deskTypeBiggestTrump.cmp > card.cmp) > -1
       if (!doesUserHaveDeskType && doesUserHaveTrump && doesUserHaveBiggerTrump && card.type === this.game.trump) return true
 
       const deskTypeBiggest = this.desk.filter(item => item.card.type === deskFirst.type).sort((a, b) => b.cmp - a.cmp).at(0)
-      const doesUserHaveBiggerDesk = deskTypeBiggest && this.cards.findIndex(item => item.type === deskFirst.type && item.cmp > deskTypeBiggest.cmp) > -1
+      const doesUserHaveBiggerDesk = deskTypeBiggest && this.myCardsOnDeck.findIndex(item => item.type === deskFirst.type && item.cmp > deskTypeBiggest.cmp) > -1
       if (doesUserHaveDeskType && doesUserHaveBiggerDesk && card.cmp < deskTypeBiggest.cmp) return true
 
       return false
@@ -281,9 +315,10 @@ const app = createApp({
 
         // console.log('setTransform', { card }, transform)
 
-        if (card.status === 'initial') {
-          cardNode.style.setProperty('transition-delay', `${0.02 * index}s`)
+        if (this.animatingIntro) {
+          cardNode.style.setProperty('transition-delay', `${0.04 * index}s`)
         }
+
         cardNode.style.setProperty('transform', transform)
       }
 
@@ -310,8 +345,8 @@ const app = createApp({
         transform = `${transform} translate3d(${translate3dX}px, ${translate3dY}px, 0px)`
         transform = `${transform} scale(${scale})`
 
-        if (card.status === 'initial') {
-          cardNode.style.setProperty('transition-delay', `${0.01 * index}s`)
+        if (this.animatingIntro) {
+          cardNode.style.setProperty('transition-delay', `${0.04 * index}s`)
         }
 
         cardNode.style.setProperty('transform', transform)
@@ -395,7 +430,7 @@ const app = createApp({
         const translate3dY = windowWidth / 2 - cardHeight * scale + 125 * scale
         const rotateZ = 180
 
-        setTransform({ card, cardNode, rotation, translate3dX, translate3dY, scale, index })
+        setTransform({ card, cardNode, rotation, translate3dX, translate3dY, scale, index: this.othersCardsRight.length - index })
         cardNode.style.setProperty('z-index', this.othersCardsRight.length - index + 10)
       }
 
@@ -410,7 +445,7 @@ const app = createApp({
 
         let rotation = 0
         let translate3dX = 0
-        let translate3dY = windowWidth / 2
+        let translate3dY = windowWidth / 2 + cardHeight * scale
 
         if (card.position === 'right') {
           rotation = 90
@@ -443,11 +478,13 @@ const app = createApp({
     },
 
     removeTransitionDelays() {
-      const allCards = [...this.cards, ...this.othersCards]
-      for (let index = 0; index < allCards.length; index++) {
-        const card = allCards[index];
+      for (let index = 0; index < this.allCards.length; index++) {
+        const card = this.allCards[index]
         const cardNode = document.getElementById(card.id)
 
+        if (cardNode?.style.transition) {
+          cardNode.style.removeProperty('transition')
+        }
         if (cardNode?.style.transitionDelay) {
           cardNode.style.removeProperty('transition-delay')
         }
@@ -463,13 +500,15 @@ const app = createApp({
 
       await this.$nextTick()
 
-      const cards = this.$refs.gameRegion?.querySelectorAll('.poker-card') ?? []
-      for (let index = 0; index < cards.length; index++) {
-        const card = cards[index];
-        card.style.setProperty('transform', `${getComputedStyle(card).getPropertyValue('transform')} translate3d(-${index / 4 + 1}px, ${index / 4 + 1}px, 0px)`)
+      for (let index = 0; index < this.allCards.length; index++) {
+        const card = this.allCards[index]
+        const cardNode = document.getElementById(card.id)
+
+        cardNode?.style.setProperty('transform', `${getComputedStyle(cardNode).getPropertyValue('transform')} translate3d(-${index / 4 + 1}px, ${index / 4 + 1}px, 0px)`)
+        cardNode?.style.setProperty('transition', `1s transform`)
       }
 
-      await sleep(2000)
+      await sleep(1000)
 
       this.cards = this.cards.map(card => ({
         ...card,
@@ -481,11 +520,12 @@ const app = createApp({
         status: 'indeck',
       }))
 
-      this.animatingIntro = false
-
       await this.$nextTick()
       this.calculateScale()
       await this.$nextTick()
+      await sleep(1000)
+      this.animatingIntro = false
+      await sleep(2000)
       this.removeTransitionDelays()
     },
 
@@ -521,8 +561,9 @@ const app = createApp({
       this.desk = deskCards
     },
 
-    socket_roomStarted() {
-      this.runTimer(10)
+    async socket_roomStarted() {
+      await sleep(2000)
+      this.runTimer(23)
     },
 
     socket_gameStarted(trump) {
@@ -616,6 +657,11 @@ const app = createApp({
       // this.othersCards = this.othersCards.filter(item => item.status !== 'indesk')
     },
 
+    socket_winner(winner) {
+      this.game.winner = winner
+      runConfetti()
+    },
+
     calculateCardsValue(cards) {
       return cards.map(card => ({
         cmp: cardSortOrder[card.number] ?? parseInt(card.number),
@@ -655,6 +701,7 @@ const app = createApp({
 
     killTimer() {
       if (this.timerPid) this.timerPid.kill()
+      this.timerRunning = false
     }
   },
   watch: {
@@ -893,7 +940,8 @@ socket.addEventListener('message', function (message) {
       break;
 
     case 'winner':
-      app.game.winner = JSON.parse(message.message)
+      const winner = JSON.parse(message.message)
+      app.socket_winner(winner)
       break;
 
     case 'trump':
