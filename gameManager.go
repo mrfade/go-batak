@@ -40,6 +40,24 @@ type stageRegistry struct {
 	Finished string
 }
 
+var Mode = newModeRegistry()
+
+func newModeRegistry() *modeRegistry {
+	return &modeRegistry{
+		_1v1: "1v1",
+		_1v2: "1v2",
+		_1v3: "1v3",
+		_2v2: "2v2",
+	}
+}
+
+type modeRegistry struct {
+	_1v1 string
+	_1v2 string
+	_1v3 string
+	_2v2 string
+}
+
 var CardsNumbers = []string{"A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"}
 var CardNumberValues = map[string]int{
 	"A":  30,
@@ -91,6 +109,11 @@ type GameManager struct {
 	Trump          string
 	leftoverDone   bool
 	Round          int
+	Mode           string
+}
+
+type GameSettings struct {
+	Mode string `json:"mode"`
 }
 
 func (manager *GameManager) createCards() {
@@ -128,10 +151,15 @@ func (manager *GameManager) generateRandomCards() {
 
 	cards = append(cards, manager.allCards...)
 
-	for i := 0; i < 16*3; i++ {
+	log.Println("generateRandomCards :: len(cards)", len(cards))
+	log.Println("generateRandomCards :: manager.MaxPlayers()", manager.MaxPlayers())
+	log.Println("generateRandomCards :: manager.NumUserCards()", manager.NumUserCards())
+	log.Println("generateRandomCards :: manager.NumUserCards()*manager.MaxPlayers()", manager.NumUserCards()*manager.MaxPlayers())
+
+	for i := 0; i < manager.NumUserCards()*manager.MaxPlayers(); i++ {
 		randIndex := rand.Intn(len(cards))
 		card := cards[randIndex]
-		user := manager.Users[i/16]
+		user := manager.Users[i/manager.NumUserCards()]
 		user.cards = append(user.cards, card)
 		cards = append(cards[:randIndex], cards[randIndex+1:]...)
 	}
@@ -175,27 +203,69 @@ func (manager *GameManager) findUserIndex(userId string) int {
 }
 
 func (manager *GameManager) removeUserById(userId string) {
+	log.Println("removeUserById :: userId", userId)
+
 	user := manager.getUser(userId)
-	user.con.Close()
+	if user.con != nil {
+		user.con.Close()
+	}
+	log.Println("removeUserById :: user", user)
 
 	userIndex := manager.findUserIndex(userId)
+	log.Println("removeUserById :: userIndex", userIndex)
 
 	manager.Users = append(manager.Users[:userIndex], manager.Users[userIndex+1:]...)
+	log.Println("removeUserById :: manager.Users", manager.Users)
 
 	if len(manager.Users) == 0 {
 		manager.destroy()
 	}
 }
 
+func (manager *GameManager) DisconnectUser(user *User) {
+	user.con = nil
+	user.Type = UserType.Bot
+}
+
 func (manager *GameManager) isOwner(user User) bool {
 	return manager.Owner.Id == user.Id
+}
+
+func (manager *GameManager) MaxPlayers() int {
+	switch manager.Mode {
+	case Mode._1v1:
+		return 2
+	case Mode._1v2:
+		return 3
+	case Mode._1v3:
+		return 4
+	case Mode._2v2:
+		return 4
+	}
+
+	return 3
+}
+
+func (manager *GameManager) NumUserCards() int {
+	switch manager.Mode {
+	case Mode._1v1:
+		return 12
+	case Mode._1v2:
+		return 16
+	case Mode._1v3:
+		return 13
+	case Mode._2v2:
+		return 13
+	}
+
+	return 16
 }
 
 func (manager *GameManager) runDesk() {
 	var userJson []byte
 	var nextUser *User
 
-	if len(manager.Desk) == 3 {
+	if len(manager.Desk) == manager.MaxPlayers() {
 		nextUser = manager.calculateRound()
 		userIndex := manager.findUserIndex(nextUser.Id)
 
@@ -216,7 +286,7 @@ func (manager *GameManager) runDesk() {
 		// 	Message: strconv.Itoa(user.Score),
 		// })
 	} else {
-		manager.currentIndex = (manager.currentIndex + 1) % 3
+		manager.currentIndex = (manager.currentIndex + 1) % manager.MaxPlayers()
 		nextUser = manager.Users[manager.currentIndex]
 		userJson, _ = json.Marshal(nextUser)
 
@@ -236,7 +306,7 @@ func (manager *GameManager) runDesk() {
 
 	manager.announceUserList()
 
-	if manager.Round == 16 {
+	if manager.Round == manager.NumUserCards() {
 		manager.Finished = true
 
 		winner := manager.calculateWinner()
@@ -398,11 +468,13 @@ func (manager *GameManager) announceBids() {
 func (manager *GameManager) startGame() {
 	manager.Started = true
 
+	log.Println("startGame :: MaxPlayers()", manager.MaxPlayers())
+
 	usersCount := len(manager.Users)
-	for i := 0; i < 3-usersCount; i++ {
+	for i := 0; i < manager.MaxPlayers()-usersCount; i++ {
 		user := User{
 			Id:   uuid.Must(uuid.NewRandom()).String(),
-			Name: fmt.Sprintf("Bot %d", i),
+			Name: fmt.Sprintf("Bot %d", i+1),
 			Type: UserType.Bot,
 			con:  nil,
 		}
@@ -463,7 +535,13 @@ func (manager *GameManager) trumpStage() {
 			})
 
 			if manager.Stage == Stage.Trump {
-				manager.leftoverStage()
+				if manager.Mode == Mode._1v2 {
+					manager.leftoverStage()
+				}
+
+				if manager.Mode == Mode._1v3 {
+					manager.realGameStart()
+				}
 			}
 		}
 	}()
@@ -544,6 +622,19 @@ func (manager *GameManager) sendOthersCards() {
 	manager.sendMessage(WSResponseMessage{
 		Type:    "othersCards",
 		Message: string(othersCardsJson),
+	})
+}
+
+func (manager *GameManager) sendGameSettings() {
+	settings := GameSettings{
+		Mode: manager.Mode,
+	}
+
+	settingsJson, _ := json.Marshal(settings)
+
+	manager.sendMessage(WSResponseMessage{
+		Type:    "gameSettings",
+		Message: string(settingsJson),
 	})
 }
 

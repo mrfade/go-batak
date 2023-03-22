@@ -125,11 +125,17 @@ const mockOthersCards = [
 ]
 
 const playerPositions = {
-  0: "bottom",
-  1: "right",
-  // 2: "top",
-  2: "left",
-  3: "left"
+  '1v2': {
+    0: "bottom",
+    1: "right",
+    2: "left",
+  },
+  '1v3': {
+    0: "bottom",
+    1: "right",
+    2: "top",
+    3: "left",
+  }
 }
 
 const cardTypeSortOrder = {
@@ -192,6 +198,9 @@ const app = createApp({
         type: 'createGame',
         userid: this.user.id,
         username: this.user.name,
+        message: JSON.stringify({
+          mode: this.game.mode
+        })
       }))
 
       this.game.owner = this.user
@@ -260,12 +269,12 @@ const app = createApp({
       if (!doesUserHaveDeskType && doesUserHaveTrump && card.type !== this.game.trump) return true
 
       const deskTypeBiggestTrump = this.desk.filter(item => item.card.type === this.game.trump).sort((a, b) => b.cmp - a.cmp).at(0)
-      const doesUserHaveBiggerTrump = deskTypeBiggestTrump && this.myCardsOnDeck.findIndex(item => item.type === this.game.trump && deskTypeBiggestTrump.cmp > card.cmp) > -1
+      const doesUserHaveBiggerTrump = deskTypeBiggestTrump && this.myCardsOnDeck.findIndex(item => item.type === this.game.trump && deskTypeBiggestTrump.card.cmp > card.cmp) > -1
       if (!doesUserHaveDeskType && doesUserHaveTrump && doesUserHaveBiggerTrump && card.type === this.game.trump) return true
 
       const deskTypeBiggest = this.desk.filter(item => item.card.type === deskFirst.type).sort((a, b) => b.cmp - a.cmp).at(0)
-      const doesUserHaveBiggerDesk = deskTypeBiggest && this.myCardsOnDeck.findIndex(item => item.type === deskFirst.type && item.cmp > deskTypeBiggest.cmp) > -1
-      if (doesUserHaveDeskType && doesUserHaveBiggerDesk && card.cmp < deskTypeBiggest.cmp) return true
+      const doesUserHaveBiggerDesk = deskTypeBiggest && this.myCardsOnDeck.findIndex(item => item.type === deskFirst.type && item.cmp > deskTypeBiggest.card.cmp) > -1
+      if (doesUserHaveDeskType && doesUserHaveBiggerDesk && card.cmp < deskTypeBiggest.card.cmp) return true
 
       return false
     },
@@ -391,12 +400,12 @@ const app = createApp({
           continue
         }
 
-        const rotation = topRotations[index]
+        const rotation = 180 - topRotations[index]
         const translate3dX = topTranslate3dXs[index]
-        const translate3dY = -windowHeight / 2 + 125 * scale
+        const translate3dY = windowHeight / 2 - 125 * scale
 
         setTransform({ card, cardNode, rotation, translate3dX, translate3dY, scale, index })
-        cardNode.style.setProperty('z-index', this.othersCardsTop.length - index + 10)
+        cardNode.style.setProperty('z-index', index + 10)
       }
 
       // left
@@ -600,7 +609,7 @@ const app = createApp({
       if (userId === this.user.id) return
 
       const userIndex = this.playerSeatOrder.findIndex(user => user === userId)
-      const userPosition = playerPositions[userIndex]
+      const userPosition = playerPositions[this.game.mode][userIndex]
       const cardNode = document.getElementById(card.id)
       let rotation = getRandomInt(-10, 10)
 
@@ -630,7 +639,7 @@ const app = createApp({
 
       const roundWinnerId = roundWinner.id
       const winnerIndex = this.playerSeatOrder.findIndex(user => user === roundWinnerId)
-      const winnerPosition = playerPositions[winnerIndex]
+      const winnerPosition = playerPositions[this.game.mode][winnerIndex]
 
       const cardIds = this.cardsOnDesk.map(card => card.id)
       console.log('socket_roundWinner :: cardIds', cardIds)
@@ -673,7 +682,7 @@ const app = createApp({
     calculateCardsPositions(cards) {
       return cards.map(card => ({
         status: this.game.started ? 'indeck' : 'initial',
-        position: playerPositions[app.playerSeatOrder.findIndex(id => id === card.owner?.id) ?? 10],
+        position: playerPositions[this.game.mode][app.playerSeatOrder.findIndex(id => id === card.owner?.id) ?? 10],
         ...card
       }))
     },
@@ -728,7 +737,7 @@ const app = createApp({
         const user = this.users.find(user => user.id === userId)
         return user ? {
           ...user,
-          position: playerPositions[index],
+          position: playerPositions[this.game.mode][index],
         } : {}
       })
       const filteredUsers = users.filter(user => !!user)
@@ -778,7 +787,8 @@ const app = createApp({
         realStarted: false,
         trump: '',
         winner: {},
-        owner: {}
+        owner: {},
+        mode: '1v2'
       },
       user: {
         id: '',
@@ -881,6 +891,11 @@ socket.addEventListener('message', function (message) {
       app.game.owner = gameDetails.Owner
       app.game.desk = gameDetails.Desk
       app.game.trump = gameDetails.Trump
+      break;
+
+    case 'gameSettings':
+      const gameSettings = JSON.parse(message.message)
+      app.game.mode = gameSettings.mode
       break;
 
     case 'userJoined':

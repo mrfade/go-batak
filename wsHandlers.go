@@ -28,6 +28,7 @@ func mountWSHandlers() {
 		if checkUser != nil {
 			// update connection
 			checkUser.con = c
+			checkUser.Type = UserType.User
 
 			checkUser.sendCards()
 
@@ -42,7 +43,7 @@ func mountWSHandlers() {
 		}
 
 		// if room is full or started
-		if len(manager.Users) >= 3 || manager.Started {
+		if len(manager.Users) >= manager.MaxPlayers() || manager.Started {
 			c.WriteJSON(WSResponseMessage{
 				Type: "gameFull",
 			})
@@ -139,7 +140,12 @@ func mountWSHandlers() {
 			Message: manager.Trump,
 		})
 
-		manager.leftoverStage()
+		if manager.Mode == Mode._1v2 {
+			manager.leftoverStage()
+		}
+		if manager.Mode == Mode._1v3 {
+			manager.realGameStart()
+		}
 	})
 
 	wsHandler.Handle("selectLeftover", func(c *websocket.Conn, wm WSClientMessage) {
@@ -195,6 +201,7 @@ func mountWSHandlers() {
 		// 	return
 		// }
 
+		manager.sendGameSettings()
 		manager.startGame()
 
 		for _, user := range manager.Users {
@@ -211,13 +218,20 @@ func mountWSHandlers() {
 			checkMananger.removeUserById(wm.UserId)
 		}
 
+		gameSettings := GameSettings{
+			Mode: "1v2",
+		}
+		json.Unmarshal([]byte(wm.Message), &gameSettings)
+
 		owner := createUserFromWSMessage(c, wm)
 		manager := newGameManager(owner)
 
 		gameId := RandStringBytes(8)
+		mode := gameSettings.Mode
 
 		Games[gameId] = &manager
 		manager.Id = gameId
+		manager.Mode = mode
 
 		c.WriteJSON(WSResponseMessage{
 			Type:    "gameId",

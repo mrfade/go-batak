@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"log"
 
 	"github.com/gofiber/fiber/v2"
@@ -60,32 +59,31 @@ func main() {
 	app.Get("/ws", websocket.New(func(c *websocket.Conn) {
 		// fmt.Println(c.Locals("Host")) // "Localhost:3000"
 
-		for {
-			_, msg, err := c.ReadMessage()
-			if err != nil {
-				// log.Println("read:", err)
-				break
+		log.Println("Client connected", c)
+
+		c.SetCloseHandler(func(code int, text string) error {
+			log.Println("Client disconnected", c)
+
+			for _, game := range Games {
+				for _, user := range game.Users {
+					if user.con == c {
+						game.DisconnectUser(user)
+					}
+				}
 			}
 
-			message := WSClientMessage{}
-			err = json.Unmarshal(msg, &message)
+			return &fiber.Error{}
+		})
 
+		for {
+			message := WSClientMessage{}
+			err := c.ReadJSON(&message)
 			if err != nil {
-				log.Println("ClientMessage unmarshall error", err)
-				continue
+				log.Println("ClientMessage read error:", err)
+				break
 			}
 
 			wsHandler.Run(c, message)
-
-			// log.Println("USERS", gameManager.users)
-
-			// log.Printf("recv: %s", msg)
-			// err = c.WriteMessage(mt, msg)
-
-			if err != nil {
-				// log.Println("write:", err)
-				break
-			}
 		}
 	}))
 
