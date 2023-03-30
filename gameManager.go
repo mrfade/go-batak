@@ -95,21 +95,22 @@ type DeskCard struct {
 type GameManager struct {
 	Id             string
 	Stage          string
-	allCards       []Card
+	Trump          string
+	Mode           string
 	Users          []*User
+	allCards       []Card
 	leftOverCards  []Card
 	Desk           []DeskCard
+	Server         *Server
+	Owner          *User
+	biggestBidUser *User
+	Turn           *User
+	currentIndex   int
+	Round          int
 	Started        bool
 	Finished       bool
 	gameStarted    bool
-	Owner          *User
-	biggestBidUser *User
-	currentIndex   int
-	Turn           *User
-	Trump          string
 	leftoverDone   bool
-	Round          int
-	Mode           string
 }
 
 type GameSettings struct {
@@ -154,20 +155,19 @@ func (manager *GameManager) generateRandomCards() {
 	log.Println("generateRandomCards :: len(cards)", len(cards))
 	log.Println("generateRandomCards :: manager.MaxPlayers()", manager.MaxPlayers())
 	log.Println("generateRandomCards :: manager.NumUserCards()", manager.NumUserCards())
-	log.Println("generateRandomCards :: manager.NumUserCards()*manager.MaxPlayers()", manager.NumUserCards()*manager.MaxPlayers())
 
 	for i := 0; i < manager.NumUserCards()*manager.MaxPlayers(); i++ {
 		randIndex := rand.Intn(len(cards))
 		card := cards[randIndex]
 		user := manager.Users[i/manager.NumUserCards()]
-		user.cards = append(user.cards, card)
+		user.Cards = append(user.Cards, card)
 		cards = append(cards[:randIndex], cards[randIndex+1:]...)
 	}
 
 	// bind cards to users
 	for i := 0; i < len(manager.Users); i++ {
-		for j := 0; j < len(manager.Users[i].cards); j++ {
-			manager.Users[i].cards[j].Owner = manager.Users[i]
+		for j := 0; j < len(manager.Users[i].Cards); j++ {
+			manager.Users[i].Cards[j].Owner = manager.Users[i]
 		}
 	}
 
@@ -178,8 +178,8 @@ func (manager *GameManager) addDeskCard(card DeskCard) {
 	manager.Desk = append(manager.Desk, card)
 }
 
-func (manager *GameManager) addUser(user User) {
-	manager.Users = append(manager.Users, &user)
+func (manager *GameManager) addUser(user *User) {
+	manager.Users = append(manager.Users, user)
 }
 
 func (manager *GameManager) getUser(userId string) *User {
@@ -324,16 +324,15 @@ func (manager *GameManager) runDesk() {
 	}
 
 	go func() {
-		sleep := 2 * time.Second
-		if len(manager.Desk) == 0 {
-			sleep = 5 * time.Second
-		}
+		// sleep := 2 * time.Second
+		// if len(manager.Desk) == 0 {
+		// 	sleep = 5 * time.Second
+		// }
 
-		time.Sleep(sleep)
+		// time.Sleep(sleep)
 
 		if nextUser.Type == UserType.Bot {
-			// nextUser.botManager.Run()
-			card := nextUser.cards[rand.Intn(len(nextUser.cards))]
+			card := nextUser.botManager.GetCard()
 			manager.onCardSent(nextUser, card)
 		}
 	}()
@@ -480,12 +479,12 @@ func (manager *GameManager) startGame() {
 		}
 
 		botManager := &BotManager{
-			user:        &user,
+			player:      &user,
 			gameManager: manager,
 		}
 		user.botManager = botManager
 
-		manager.addUser(user)
+		manager.addUser(&user)
 	}
 
 	manager.generateRandomCards()
@@ -587,8 +586,8 @@ func (manager *GameManager) selectRandomLeftovers() []Card {
 	cards := []Card{}
 
 	for i := 0; i < 4; i++ {
-		randIndex := rand.Intn(len(manager.biggestBidUser.cards))
-		card := manager.biggestBidUser.cards[randIndex]
+		randIndex := rand.Intn(len(manager.biggestBidUser.Cards))
+		card := manager.biggestBidUser.Cards[randIndex]
 		cards = append(cards, card)
 		manager.biggestBidUser.removeCard(randIndex)
 	}
@@ -610,7 +609,7 @@ func (manager *GameManager) sendOthersCards() {
 			continue
 		}
 
-		othersCards = append(othersCards, user.cards...)
+		othersCards = append(othersCards, user.Cards...)
 	}
 
 	for i := 0; i < len(othersCards); i++ {
@@ -664,7 +663,7 @@ func (manager *GameManager) destroy() {
 
 	log.Println("Game destroyed ::", manager.Id)
 
-	delete(Games, manager.Id)
+	delete(manager.Server.Rooms, manager.Id)
 }
 
 func newGameManager(owner User) GameManager {
@@ -672,7 +671,7 @@ func newGameManager(owner User) GameManager {
 	manager.createCards()
 
 	manager.Stage = Stage.Created
-	manager.addUser(owner)
+	manager.addUser(&owner)
 
 	user := manager.getUser(owner.Id)
 	manager.Owner = user

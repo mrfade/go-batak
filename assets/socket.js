@@ -311,14 +311,14 @@ const app = createApp({
         return values.map(x => x + value / 2)
       }
 
-      const setTransform = ({ card, cardNode, rotation, translate3dX, translate3dY, scale, index, rotateZ }) => {
+      const setTransform = ({ card, cardNode, rotation, translate3dX, translate3dY, scale, index, rotateY, rotateZ }) => {
         let transform = ''
         transform = `${transform} rotate(${rotation}deg)`
         transform = `${transform} translate3d(${translate3dX}px, ${translate3dY}px, 0px)`
         transform = `${transform} rotate(0deg)`
-        transform = `${transform} rotateY(180deg)`
+        transform = `${transform} rotateY(${rotateY ?? 180}deg)`
         transform = `${transform} scale(${scale})`
-        transform = `${transform} rotateY(360deg)`
+        // transform = `${transform} rotateY(360deg)`
 
         if (rotateZ) transform = `${transform} rotateZ(${rotateZ}deg)`
 
@@ -329,6 +329,43 @@ const app = createApp({
         }
 
         cardNode.style.setProperty('transform', transform)
+
+        return transform
+      }
+
+      if (this.game.stage === 'finished') {
+        for (let index = 0; index < this.allCards.length; index++) {
+          const card = this.allCards[index];
+
+          if (!card.gameoverTransform) {
+            const cardNode = document.getElementById(card.id)
+            if (!cardNode) {
+              console.log('adjustCardsPositions :: cardNode not found', card.id)
+              continue
+            }
+
+            const rotation = getRandomInt(0, 360)
+            // const rotation = 0
+            const translate3dX = getRandomInt(-windowWidth / 2, windowWidth / 2)
+            const translate3dY = getRandomInt(-windowHeight / 2, windowHeight / 2)
+
+            let transform = ''
+            // transform = `${transform} rotate(${rotation}deg)`
+            transform = `${transform} translate3d(${translate3dX}px, ${translate3dY}px, 0px)`
+            transform = `${transform} scale(${scale})`
+
+            cardNode.style.removeProperty('transition')
+            cardNode.style.setProperty('transition-delay', `${0.04 * index + 2}s`)
+            cardNode.style.setProperty('transform', transform)
+            cardNode.style.setProperty('opacity', '0.95')
+
+            cardNode.querySelector('.front').style.setProperty('transform', `rotate(${rotation}deg)`)
+
+            card.gameoverTransform = true
+          }
+        }
+
+        return
       }
 
       const rotations = getRotations(this.myCardsOnDeck.length, 0.4)
@@ -669,6 +706,26 @@ const app = createApp({
     socket_winner(winner) {
       this.game.winner = winner
       runConfetti()
+
+      const scale = this.scale
+      const windowHeight = window.innerHeight
+      for (let index = 0; index < this.allCards.length; index++) {
+        const card = this.allCards[index];
+
+        const cardNode = document.getElementById(card.id)
+        if (!cardNode) {
+          console.log('adjustCardsPositions :: cardNode not found', card.id)
+          continue
+        }
+
+        let transform = ''
+        transform = `${transform} rotate(0deg)`
+        transform = `${transform} translate3d(0px, ${windowHeight / 2 + 182}px, 0px)`
+        transform = `${transform} scale(${scale})`
+
+        cardNode.style.setProperty('transition', 'none')
+        cardNode.style.setProperty('transform', transform)
+      }
     },
 
     calculateCardsValue(cards) {

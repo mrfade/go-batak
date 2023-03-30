@@ -19,25 +19,31 @@ type WSResponseMessage struct {
 }
 
 type WSHandlerEngine struct {
-	Handlers map[string]func(*websocket.Conn, WSClientMessage)
+	Handlers map[string]func(*Server, *websocket.Conn, WSClientMessage)
+	Server   *Server
 }
 
-func (wshandler *WSHandlerEngine) Handle(name string, handler func(*websocket.Conn, WSClientMessage)) {
-	wshandler.Handlers[name] = handler
+func (engine *WSHandlerEngine) Handle(name string, handler func(*Server, *websocket.Conn, WSClientMessage)) {
+	engine.Handlers[name] = handler
 }
 
-func (wshandler *WSHandlerEngine) Run(connection *websocket.Conn, message WSClientMessage) {
-	handler, ok := wshandler.Handlers[message.Type]
+func (engine *WSHandlerEngine) Run(connection *websocket.Conn, message WSClientMessage) {
+	handler, ok := engine.Handlers[message.Type]
 
 	if !ok {
-		log.Println("WSHandler :: handle not found", message.Type)
+		log.Println("WSHandlerEngine :: handle not found", message.Type)
 	}
 
-	handler(connection, message)
+	// log.Println("WSHandlerEngine :: Run :: server", engine.Server)
+	log.Println("WSHandlerEngine :: Run :: message", message)
+
+	handler(engine.Server, connection, message)
 }
 
-func newWSHandler() WSHandlerEngine {
-	wshandler := WSHandlerEngine{}
-	wshandler.Handlers = make(map[string]func(*websocket.Conn, WSClientMessage))
-	return wshandler
+func newWSHandler(server *Server) WSHandlerEngine {
+	engine := WSHandlerEngine{
+		Handlers: map[string]func(*Server, *websocket.Conn, WSClientMessage){},
+		Server:   server,
+	}
+	return engine
 }

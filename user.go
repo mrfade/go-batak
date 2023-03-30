@@ -27,14 +27,14 @@ type User struct {
 	Score      int             `json:"score"`
 	Bid        int             `json:"bid"`
 	Type       string          `json:"type"`
-	cards      []Card          `json:"-"`
+	Cards      []Card          `json:"-"`
 	trump      string          `json:"-"`
 	con        *websocket.Conn `json:"-"`
 	botManager *BotManager
 }
 
 func (user *User) sendCards() {
-	cardsjson, err := json.Marshal(user.cards)
+	cardsjson, err := json.Marshal(user.Cards)
 	if err != nil {
 		log.Println("cards json error", err)
 	}
@@ -50,7 +50,7 @@ func (user *User) sendCards() {
 }
 
 func (user *User) findCardIndex(card Card) int {
-	for index, _card := range user.cards {
+	for index, _card := range user.Cards {
 		if _card.Id == card.Id {
 			return index
 		}
@@ -60,11 +60,11 @@ func (user *User) findCardIndex(card Card) int {
 }
 
 func (user *User) removeCard(index int) {
-	user.cards = append(user.cards[:index], user.cards[index+1:]...)
+	user.Cards = append(user.Cards[:index], user.Cards[index+1:]...)
 }
 
 func (user *User) addCards(cards ...Card) {
-	user.cards = append(user.cards, cards...)
+	user.Cards = append(user.Cards, cards...)
 }
 
 func (user *User) sendMessage(message WSResponseMessage) {
